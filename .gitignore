@@ -1,0 +1,101 @@
+# ========================
+# OS / System
+# ========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========================
+# IDEs
+# ========================
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+
+# ========================
+# Java / Gradle
+# ========================
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+.gradle-cache/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.log
+*.egg-info/
+dist/
+.venv/
+venv/
+.env
+*.env
+
+# ========================
+# DB / Output / Crawling Results
+# ========================
+*.db
+*.sqlite
+*.sqlite3
+*.csv
+*.json
+*.xml
+*.html
+scrapy_output/
+output/
+debug/
+*.tmp
+
+# ========================
+# Node.js (if frontend included later)
+# ========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ========================
+# Project-specific files
+# ========================
+*.xlsx
+*.bak
+*.old
+*.orig
+
+# ========================
+# OS Executables (Windows/Linux/Mac)
+# ========================
+*.exe
+*.out
+*.dll
+*.so
+*.dylib
+
+# ========================
+# Shell / Batch
+# ========================
+*.sh
+*.bat
+*.cmd
+
+# ========================
+# Git
+# ========================
+*.orig
+*.rej

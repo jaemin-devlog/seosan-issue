@@ -1,0 +1,8 @@
+plugins {
+    id 'base'
+}
+
+task runCrawl(type: Exec) {
+    workingDir = file('.')  // crawler 디렉토리
+    commandLine 'cmd', '/c', 'venv\\Scripts\\python.exe', 'main.py'
+}
