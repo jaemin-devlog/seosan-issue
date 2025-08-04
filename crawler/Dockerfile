@@ -20,4 +20,4 @@ EXPOSE 5001
 # gunicorn을 사용하여 여러 워커로 실행하는 것이 운영 환경에 더 안정적입니다.
 # CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:5001", "api:app"]
 # 개발 및 심사 환경에서는 간단하게 flask로 실행합니다.
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5001"]
+CMD ["flask", "--app", "api", "run", "--host=0.0.0.0", "--port=5001"]
