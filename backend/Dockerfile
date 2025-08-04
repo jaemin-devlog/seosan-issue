@@ -38,7 +38,7 @@ ENV SPRING_PROFILES_ACTIVE=production
 COPY --from=builder /app/backend/build/libs/*.jar app.jar
 
 # 애플리케이션 포트 노출
-EXPOSE 8082 # 프로젝트의 실제 포트인 8082로 변경
+EXPOSE 8082
 
 # 애플리케이션 실행 명령
 ENTRYPOINT ["java", "-jar", "app.jar"]
