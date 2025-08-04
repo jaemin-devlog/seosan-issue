@@ -32,7 +32,3 @@ def start_crawling():
         # 실제 운영 환경에서는 로깅 라이브러리를 사용해 에러를 기록하는 것이 좋습니다.
         print(f"Error during crawling: {e}")
         return jsonify({"error": "An error occurred during crawling."}), 500
-
-if __name__ == '__main__':
-    # host='0.0.0.0'는 외부에서 접근 가능하도록 설정합니다.
-    app.run(host='0.0.0.0', port=5001, debug=True)
