@@ -6,6 +6,7 @@ WORKDIR /app
 # 프로젝트 루트에서 Gradle Wrapper 및 설정 파일 복사
 COPY gradlew .
 COPY gradle gradle/
+COPY gradle/wrapper/gradle-wrapper.jar gradle/wrapper/
 COPY settings.gradle .
 
 # 백엔드 모듈의 build.gradle 파일 복사
