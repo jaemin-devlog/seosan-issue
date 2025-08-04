@@ -33,8 +33,7 @@ services:
       - "8082:8082"
     depends_on:
       - db
-      - crawler # db 서비스가 먼저 시작된 후에 backend가 시작되도록 설정
-      - crawler # crawler 서비스가 먼저 시작된 후에 backend가 시작되도록 설정
+      - crawler
     restart: always
     environment:
       # 데이터베이스 연결 정보
