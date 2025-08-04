@@ -3,6 +3,7 @@ FROM python:3.11-slim
 
 # 작업 디렉토리 설정
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 # requirements.txt 파일을 먼저 복사하여 캐시 활용
 COPY requirements.txt .
@@ -17,10 +18,4 @@ COPY . .
 EXPOSE 5001
 
 # API 서버 실행
-# gunicorn을 사용하여 여러 워커로 실행하는 것이 운영 환경에 더 안정적입니다.
-# CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:5001", "api:app"]
-# 개발 및 심사 환경에서는 간단하게 flask로 실행합니다.
-ENV FLASK_APP=api.py
-
-# API 서버 실행
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5001"]
+CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:5001", "api:app"]
