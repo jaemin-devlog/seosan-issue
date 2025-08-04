@@ -79,7 +79,8 @@ def crawl_all_pages(category_name, base_url):
     all_posts = []
     total_pages = 1
     new_posts_found = False
-    max_crawled_id = get_last_crawled_post_id(category_name)
+    # max_crawled_id = get_last_crawled_post_id(category_name) # 이 줄을 주석 처리
+    max_crawled_id = 0 # 모든 게시글을 가져오기 위해 0으로 설정
 
     print(f'--- {category_name} 크롤링 시작 ---')
     print("첫 페이지에서 전체 페이지 수 파악 중...")
@@ -115,20 +116,20 @@ def crawl_all_pages(category_name, base_url):
         print(f"{page} 페이지 크롤링 중... ({category_name})")
         posts_in_page = get_post_info(page, base_url, category_name)
         
-        found_old_post = False
+        # found_old_post = False # 이 줄을 주석 처리
         for post in posts_in_page:
-            if post['id'] > max_crawled_id:
-                all_posts.append(post)
-                new_posts_found = True
-                if post['id'] > current_max_id_in_run:
-                    current_max_id_in_run = post['id']
-            else:
-                found_old_post = True
-                break # 이미 크롤링된 게시글을 만나면 중단
+            # if post['id'] > max_crawled_id: # 이 조건문을 주석 처리
+            all_posts.append(post)
+            new_posts_found = True
+            if post['id'] > current_max_id_in_run:
+                current_max_id_in_run = post['id']
+            # else: # 이 줄을 주석 처리
+            #     found_old_post = True # 이 줄을 주석 처리
+            #     break # 이미 크롤링된 게시글을 만나면 중단 # 이 줄을 주석 처리
         
-        if found_old_post:
-            print(f"기존 게시글을 발견하여 {page} 페이지에서 크롤링을 중단합니다.")
-            break
+        # if found_old_post: # 이 줄을 주석 처리
+        #     print(f"기존 게시글을 발견하여 {page} 페이지에서 크롤링을 중단합니다.") # 이 줄을 주석 처리
+        #     break # 이 줄을 주석 처리
 
     if new_posts_found:
         update_last_crawled_post_id(category_name, current_max_id_in_run)

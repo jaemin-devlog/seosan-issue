@@ -5,6 +5,9 @@ FROM python:3.11-slim
 WORKDIR /app
 ENV PYTHONPATH=/app
 
+# curl 설치
+RUN apt-get update && apt-get install -y curl
+
 # requirements.txt 파일을 먼저 복사하여 캐시 활용
 COPY requirements.txt .
 
@@ -18,4 +21,4 @@ COPY . .
 EXPOSE 5001
 
 # API 서버 실행
-CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:5001", "api:app"]
+CMD ["gunicorn", "--workers", "4", "--timeout", "300", "--bind", "0.0.0.0:5001", "api:app"]

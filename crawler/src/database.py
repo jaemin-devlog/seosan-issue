@@ -57,7 +57,7 @@ def init_db():
     # last_crawled_info 테이블 생성 (크롤링 상태 관리)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS `last_crawled_info` (
-            `category_name` TEXT PRIMARY KEY,
+            `category_name` VARCHAR(255) PRIMARY KEY,
             `last_post_id` INTEGER,
             `last_crawled_at` DATETIME DEFAULT CURRENT_TIMESTAMP
         )
