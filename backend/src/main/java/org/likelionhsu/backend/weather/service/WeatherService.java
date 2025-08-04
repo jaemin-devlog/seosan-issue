@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.likelionhsu.backend.common.config.KmaApiProperties;
-import org.likelionhsu.backend.common.config.KmaApiProperties.RegionCoordinate;
+import org.likelionhsu.backend.common.config.KmaApiConfig;
+import org.likelionhsu.backend.common.config.KmaApiConfig.RegionCoordinate;
 import org.likelionhsu.backend.common.exception.CustomException;
 import org.likelionhsu.backend.common.exception.ErrorCode;
 import org.likelionhsu.backend.weather.dto.WeatherResponseDto;
@@ -31,15 +31,15 @@ public class WeatherService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-    private final KmaApiProperties kmaApiProperties;
+    private final KmaApiConfig kmaApiConfig;
 
     private static final String KMA_API_PATH = "getUltraSrtNcst"; // 초단기실황조회
 
     public WeatherResponseDto getWeather(String region) {
-        log.info("KmaApiProperties gridCoords: {}", kmaApiProperties.getGridCoords());
+        log.info("KmaApiProperties gridCoords: {}", kmaApiConfig.getGridCoords());
 
         RegionCoordinate selectedCoords = null;
-        for (RegionCoordinate coord : kmaApiProperties.getGridCoords()) {
+        for (RegionCoordinate coord : kmaApiConfig.getGridCoords()) {
             if (coord.getName().equals(region)) {
                 selectedCoords = coord;
                 break;
@@ -59,9 +59,9 @@ public class WeatherService {
         // 초단기실황 API는 매시각 10분 이후 호출 가능 (예: 04:15 -> base_time 0400, 04:05 -> base_time 0300)
         String baseTime = getUltraSrtBaseTime(now);
 
-        String serviceKey = kmaApiProperties.getServiceKey(); // 이미 인코딩된 키 사용
+        String serviceKey = kmaApiConfig.getServiceKey(); // 이미 인코딩된 키 사용
 
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(kmaApiProperties.getBaseUrl() + "/" + KMA_API_PATH) // 여기에 '/' 추가
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(kmaApiConfig.getBaseUrl() + "/" + KMA_API_PATH) // 여기에 '/' 추가
                 .queryParam("pageNo", "1")
                 .queryParam("numOfRows", "100") // 모든 예보 항목을 가져오기 위해 충분히 큰 값 설정
                 .queryParam("dataType", "JSON")

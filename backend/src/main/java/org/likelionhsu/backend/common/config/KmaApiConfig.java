@@ -11,7 +11,7 @@ import java.util.List;
 @Component
 @Getter
 @Setter
-public class KmaApiProperties {
+public class KmaApiConfig {
 
     private String serviceKey;
     private String baseUrl;
