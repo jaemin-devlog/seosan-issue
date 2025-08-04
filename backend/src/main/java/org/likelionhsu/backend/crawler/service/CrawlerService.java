@@ -38,8 +38,8 @@ public class CrawlerService {
             new BoardInfo("공지사항", "https://www.seosan.go.kr/seosan/bbs/B0000044/list.do?pageIndex=")
     );
 
-    // 1시간마다 실행 (fixedRate = 3600000 ms)
-    // @Scheduled(fixedRate = 3600000)
+    // 3시간마다 실행 (fixedRate = 10800000 ms)
+    @Scheduled(fixedRate = 10800000)
     @Transactional
     public void scheduleCrawling() {
         log.info("========= 서산시청 게시판 크롤링 시작 =========");
