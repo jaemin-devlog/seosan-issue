@@ -22,31 +22,38 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
 
-  # Python 크롤러 API 서비스 (Docker Hub에서 이미지 다운로드)
+  # Python 크롤러 API 서비스 (로컬 빌드)
   crawler:
-    image: ${DOCKERHUB_USERNAME}/seosan-issue-crawler:latest
+    build:
+      context: ./crawler
+      dockerfile: Dockerfile
     container_name: seosan-crawler-api
     ports:
       - "5001:5001"
     restart: always
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: seosan_issue_db
 
-  # Spring Boot 백엔드 서비스 (Docker Hub에서 이미지 다운로드)
+  # Spring Boot 백엔드 서비스 (로컬 빌드)
   backend:
-    image: ${DOCKERHUB_USERNAME}/seosan-issue-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: seosan-backend-app
     ports:
       - "8082:8082"
     depends_on:
-      - db
-      - crawler
+      db:
+        condition: service_healthy
     restart: always
     environment:
       # 데이터베이스 연결 정보
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/seosan_issue_db?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      # 크롤러 API 주소 (Docker 내부 네트워크에서는 서비스 이름으로 접근)
-      CRAWLER_API_BASE_URL: http://crawler:5001
       # 외부 API 키
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}

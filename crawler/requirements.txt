@@ -5,3 +5,4 @@ lxml
 openpyxl
 flask
 gunicorn
+mysql-connector-python

@@ -1,11 +1,16 @@
 from flask import Flask, request, jsonify
 from src.crawlers.seosan_city_crawler import crawl_all_pages
+from src.database import init_db
 import json
 
 app = Flask(__name__)
 
 # JSON 응답이 UTF-8을 사용하도록 설정
 app.config['JSON_AS_ASCII'] = False
+
+# 애플리케이션 시작 시 데이터베이스 초기화
+with app.app_context():
+    init_db()
 
 @app.route('/crawl', methods=['GET'])
 def start_crawling():
