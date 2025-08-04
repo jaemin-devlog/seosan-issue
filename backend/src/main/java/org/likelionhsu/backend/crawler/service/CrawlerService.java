@@ -25,7 +25,7 @@ public class CrawlerService {
     private final PostRepository postRepository;
     private final WebClient webClient;
 
-    @Value("${crawler.api.base-url}")
+    @Value("http://seosan-crawler-api:5001")
     private String crawlerApiBaseUrl;
 
     // 대상 게시판 정보
