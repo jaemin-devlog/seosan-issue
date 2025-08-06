@@ -1,11 +1,12 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*
 from bs4 import BeautifulSoup, Comment
 import requests
 import re
 from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor
 from src.config import HEADERS, MAX_CRAWL_PAGES
-from src.database import get_last_crawled_post_id, update_last_crawled_post_id
+from src.database import get_last_crawled_link, update_last_crawled_link
+import logging
 
 # requests.Session() 생성 (전역 세션으로 관리)
 session = requests.Session()
@@ -14,24 +15,38 @@ session.headers.update(HEADERS)
 def parse_detail_page(url):
     try:
         res = session.get(url, timeout=(10, 20))
+        res.encoding = 'euc-kr'
         res.raise_for_status()
         soup = BeautifulSoup(res.text, "lxml")
         content_el = soup.select_one("#bbs_content, .bbs_content, td.bbs_content")
         if not content_el:
+            logging.warning(f"Content element not found for URL: {url}")
             return ""
         for c in content_el.find_all(string=lambda t: isinstance(t, Comment)):
             c.extract()
         text = content_el.get_text("\n").strip()
+        text = re.sub(r'[\xa0\t\r\n]+', ' ', text).strip()
         return text
-    except requests.exceptions.RequestException:
+    except requests.exceptions.RequestException as e:
+        logging.error(f"RequestException while parsing detail page {url}: {e}", exc_info=True)
         return ""
-    except Exception:
+    except Exception as e:
+        logging.error(f"Unexpected error while parsing detail page {url}: {e}", exc_info=True)
         return ""
 
 def get_post_info(page, base_url, category_name):
     url = f"{base_url}{page}"
-    res = session.get(url, timeout=(10, 20))
-    soup = BeautifulSoup(res.text, 'lxml')
+    try:
+        res = session.get(url, timeout=(10, 20))
+        res.encoding = 'euc-kr'
+        res.raise_for_status()
+        soup = BeautifulSoup(res.text, 'lxml')
+    except requests.exceptions.RequestException as e:
+        logging.error(f"RequestException while fetching post info for page {page}, category {category_name}: {e}", exc_info=True)
+        return []
+    except Exception as e:
+        logging.error(f"Unexpected error while fetching post info for page {page}, category {category_name}: {e}", exc_info=True)
+        return []
 
     posts_on_page = []
     links_to_fetch = []
@@ -46,6 +61,9 @@ def get_post_info(page, base_url, category_name):
             post_id = 0
 
         title_tag = tds[1].select_one('a')
+        if not title_tag:
+            logging.warning(f"Title tag not found for a row on page {page}, category {category_name}")
+            continue
         title = title_tag.text.strip()
         link = urljoin(base_url, title_tag['href'])
 
@@ -76,17 +94,32 @@ def get_post_info(page, base_url, category_name):
     return posts_on_page
 
 def crawl_all_pages(category_name, base_url):
+    logging.debug(f"crawl_all_pages received base_url: {base_url}")
     all_posts = []
+    newly_crawled_posts = []
     total_pages = 1
-    new_posts_found = False
-    # max_crawled_id = get_last_crawled_post_id(category_name) # 이 줄을 주석 처리
-    max_crawled_id = 0 # 모든 게시글을 가져오기 위해 0으로 설정
+    
+    # last_crawled_link = get_last_crawled_link(category_name)
+    # if last_crawled_link:
+    #     logging.info(f"Last crawled link for {category_name}: {last_crawled_link}")
+    # else:
+    #     logging.info(f"No previous crawled link found for {category_name}.")
+    last_crawled_link = None # 항상 전체 크롤링을 위해 None으로 설정
 
-    print(f'--- {category_name} 크롤링 시작 ---')
-    print("첫 페이지에서 전체 페이지 수 파악 중...")
+    logging.info(f'--- {category_name} 크롤링 시작 ---')
+    logging.info("첫 페이지에서 전체 페이지 수 파악 중...")
     first_page_url = f"{base_url}1"
-    res = session.get(first_page_url, timeout=(10, 20))
-    soup = BeautifulSoup(res.text, 'lxml')
+    try:
+        res = session.get(first_page_url, timeout=(10, 20))
+        res.encoding = 'euc-kr'
+        res.raise_for_status()
+        soup = BeautifulSoup(res.text, 'lxml')
+    except requests.exceptions.RequestException as e:
+        logging.error(f"RequestException while fetching first page for {category_name}: {e}", exc_info=True)
+        return []
+    except Exception as e:
+        logging.error(f"Unexpected error while fetching first page for {category_name}: {e}", exc_info=True)
+        return []
 
     pagination_links = soup.select('.pagination .page_wrap a')
     if pagination_links:
@@ -108,33 +141,29 @@ def crawl_all_pages(category_name, base_url):
             total_pages = max_page_from_links
     
     pages_to_crawl = min(total_pages, MAX_CRAWL_PAGES)
-    print(f"총 {total_pages} 페이지 중 {pages_to_crawl} 페이지를 크롤링합니다.")
-
-    current_max_id_in_run = max_crawled_id # 이번 실행에서 발견된 가장 큰 ID
+    logging.info(f"총 {total_pages} 페이지 중 {pages_to_crawl} 페이지를 크롤링합니다.")
 
     for page in range(1, pages_to_crawl + 1):
-        print(f"{page} 페이지 크롤링 중... ({category_name})")
+        logging.info(f"{page} 페이지 크롤링 중... ({category_name})")
         posts_in_page = get_post_info(page, base_url, category_name)
         
-        # found_old_post = False # 이 줄을 주석 처리
+        found_last_crawled = False
         for post in posts_in_page:
-            # if post['id'] > max_crawled_id: # 이 조건문을 주석 처리
-            all_posts.append(post)
-            new_posts_found = True
-            if post['id'] > current_max_id_in_run:
-                current_max_id_in_run = post['id']
-            # else: # 이 줄을 주석 처리
-            #     found_old_post = True # 이 줄을 주석 처리
-            #     break # 이미 크롤링된 게시글을 만나면 중단 # 이 줄을 주석 처리
+            if last_crawled_link and post['link'] == last_crawled_link:
+                logging.info(f"Found last crawled post ({last_crawled_link}), stopping crawling for {category_name}.")
+                found_last_crawled = True
+                break
+            newly_crawled_posts.append(post)
         
-        # if found_old_post: # 이 줄을 주석 처리
-        #     print(f"기존 게시글을 발견하여 {page} 페이지에서 크롤링을 중단합니다.") # 이 줄을 주석 처리
-        #     break # 이 줄을 주석 처리
+        if found_last_crawled:
+            break # Stop crawling further pages if last crawled post was found
 
-    if new_posts_found:
-        update_last_crawled_post_id(category_name, current_max_id_in_run)
-        print(f"새로운 게시글 {len(all_posts)}개 발견 및 마지막 게시글 ID 업데이트: {current_max_id_in_run}")
+    if newly_crawled_posts:
+        # 새로 크롤링된 게시물 중 가장 최신 게시물의 링크를 저장
+        # posts_in_page는 최신순으로 정렬되어 있다고 가정
+        update_last_crawled_link(category_name, newly_crawled_posts[0]['link'])
+        logging.info(f"총 {len(newly_crawled_posts)}개의 새로운 게시글을 발견했습니다.")
     else:
-        print("새로운 게시글이 없습니다.")
+        logging.info("새로운 게시글이 없습니다.")
 
-    return all_posts
+    return newly_crawled_posts
