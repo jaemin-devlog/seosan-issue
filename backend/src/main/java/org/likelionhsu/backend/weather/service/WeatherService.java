@@ -47,7 +47,7 @@ public class WeatherService {
         }
 
         if (selectedCoords == null) {
-            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE, "기상청 API 응답 형식 이 올바르지 않습니다. (JSON 아님)"); // 지원하지 않는 지역은 입력 값 오류로 처리
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE, "지원하지 않는 지역입니다: " + region); // 지원하지 않는 지역은 입력 값 오류로 처리
         }
 
         int nx = selectedCoords.getNx();
@@ -95,7 +95,7 @@ public class WeatherService {
 
             if (!"00".equals(resultCode)) {
                 log.error("기상청 API 호출 실패: {} - {}", resultCode, resultMsg);
-                throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "기상청 API 응답 형식 이 올바르지 않습니다. (JSON 아님)"); // API 호출 실패는 서버 오류로 처리
+                throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "기상청 API 호출 실패: " + resultMsg); // API 호출 실패는 서버 오류로 처리
             }
 
             JsonNode items = root.path("response").path("body").path("items").path("item");
