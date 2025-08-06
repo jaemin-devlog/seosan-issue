@@ -1,0 +1,102 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/seosan_issue_db?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+
+server:
+  port: 8082
+
+naver:
+  api:
+    client-id: ${NAVER_CLIENT_ID}
+    client-secret: ${NAVER_CLIENT_SECRET}
+  search:
+    queries:
+      - "서산"
+      - "서산 맛집"
+      - "서산 카페"
+      - "서산 행사"
+      - "서산 소식"
+    regions:
+      - "서산시 전체"
+      - "대산읍"
+      - "인지면"
+      - "부석면"
+      - "팔봉면"
+      - "지곡면"
+      - "성연면"
+      - "음암면"
+      - "운산면"
+      - "해미면"
+      - "고북면"
+      - "동문1동"
+      - "동문2동"
+      - "수석동"
+      - "석남동"
+
+kma:
+  api:
+    service-key: ${KMA_SERVICE_KEY}
+    base-url: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
+
+    grid-coords:
+      - name: "서산시 전체"
+        nx: 68
+        ny: 100
+      - name: "대산읍"
+        nx: 67
+        ny: 102
+      - name: "인지면"
+        nx: 68
+        ny: 100
+      - name: "부석면"
+        nx: 66
+        ny: 99
+      - name: "팔봉면"
+        nx: 67
+        ny: 101
+      - name: "지곡면"
+        nx: 68
+        ny: 101
+      - name: "성연면"
+        nx: 69
+        ny: 100
+      - name: "음암면"
+        nx: 69
+        ny: 99
+      - name: "운산면"
+        nx: 69
+        ny: 98
+      - name: "해미면"
+        nx: 68
+        ny: 97
+      - name: "고북면"
+        nx: 67
+        ny: 96
+      - name: "동문1동"
+        nx: 68
+        ny: 99
+      - name: "동문2동"
+        nx: 68
+        ny: 99
+      - name: "수석동"
+        nx: 68
+        ny: 99
+      - name: "석남동"
+        nx: 68
+        ny: 99
+
+crawler:
+  api:
+    base-url: http://localhost:5001
+
