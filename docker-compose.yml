@@ -30,6 +30,9 @@ services:
     container_name: seosan-crawler-api
     ports:
       - "5001:5001"
+    depends_on:
+      db:
+        condition: service_healthy
     restart: always
     environment:
       DB_HOST: db
@@ -54,6 +57,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/seosan_issue_db?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_PROFILES_ACTIVE: prod
       # 외부 API 키
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
