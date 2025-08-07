@@ -91,3 +91,11 @@ crawler:
 logging:
   level:
     root: INFO # 기본 로깅 레벨
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+  packages-to-scan: org.likelionhsu.backend
+  paths-to-match: /api/v1/**
