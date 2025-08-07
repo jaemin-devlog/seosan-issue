@@ -122,7 +122,7 @@ public class WeatherService {
 
         } catch (Exception e) {
             log.error("날씨 정보 파싱 중 오류 발생: {}", e.getMessage());
-            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, e); // 원인 예외를 함께 전달
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage()); // 원인 예외의 메시지를 직접 전달
         }
     }
 
