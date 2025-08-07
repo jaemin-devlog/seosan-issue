@@ -2,7 +2,7 @@ import logging
 from flask import Flask, request, jsonify
 from src.crawlers.seosan_city_crawler import crawl_all_pages
 from src.database import init_db, get_db_connection
-from src.config import CRAWL_CONFIGS # CRAWL_CONFIGS 임포트
+from src.crawler_config import CRAWL_CONFIGS # CRAWL_CONFIGS 임포트
 import json
 
 app = Flask(__name__)
@@ -44,7 +44,6 @@ def reset_crawl_history():
 
 @app.route('/crawl', methods=['GET'])
 def start_crawling():
-    return jsonify({"message": "TESTING: API code has been updated."})
     """
     웹 크롤링을 실행하고 결과를 JSON으로 반환하는 API 엔드포인트.
     Query Parameters:
