@@ -32,6 +32,10 @@ build/
 *.log
 hs_err_pid*
 
+# Include gradlew scripts
+!gradlew
+!gradlew.bat
+
 # ========================
 # Python
 # ========================
