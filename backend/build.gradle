@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.4'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'jacoco'
 }
 
 group = 'org.likelionhsu'
@@ -36,8 +37,43 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+dependencies {
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+}
+
 tasks.named('test') {
     useJUnitPlatform()
+    finalizedBy jacocoTestReport // report is generated after tests run
+}
+
+jacoco {
+    toolVersion = "0.8.11" // Specify JaCoCo version
+}
+
+jacocoTestReport {
+    dependsOn test // ensure tests are executed before report can be generated
+    reports {
+        xml.required = true
+        csv.required = false
+        html.required = true // human readable
+    }
+    // Exclude generated classes and DTOs from coverage report
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    'org/likelionhsu/backend/BackendApplication.class',
+                    'org/likelionhsu/backend/post/dto/**',
+                    'org/likelionhsu/backend/common/exception/ErrorCode.class',
+                    'org/likelionhsu/backend/common/exception/ErrorResponse.class',
+                    'org/likelionhsu/backend/common/exception/CustomException.class',
+                    'org/likelionhsu/backend/common/exception/GlobalExceptionHandler.class',
+                    'org/likelionhsu/backend/common/exception/customexception/**',
+                    'org/likelionhsu/backend/post/domain/**',
+                    'org/likelionhsu/backend/weather/dto/**',
+                    'org/likelionhsu/backend/crawler/dto/**'
+            ])
+        }))
+    }
 }
 
 springBoot {
