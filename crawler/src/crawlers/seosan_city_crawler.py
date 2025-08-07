@@ -28,7 +28,7 @@ def parse_detail_page(url):
             c.extract()
 
         text = content_el.get_text("\n").strip()
-        text = re.sub(r'[\xa0\t\r\n]+', ' ', text).strip()
+        text = re.sub(r'\s+', ' ', text).strip() # 모든 공백 문자를 하나의 공백으로 줄이고 양쪽 공백 제거
 
         return text
     except requests.exceptions.RequestException as e:
@@ -103,7 +103,7 @@ def crawl_all_pages(category_name, base_url):
     logging.debug(f"crawl_all_pages received base_url: {base_url}")
     newly_crawled_posts = []
     
-    last_crawled_link = None # 항상 전체 크롤링을 위해 None으로 설정
+    last_crawled_link = get_last_crawled_link(category_name) # 데이터베이스에서 마지막 크롤링 링크 가져오기
 
     logging.info(f'--- {category_name} 크롤링 시작 ---')
     logging.info("첫 페이지에서 전체 페이지 수 파악 중...")
@@ -154,7 +154,8 @@ def crawl_all_pages(category_name, base_url):
                 logging.info(f"Found last crawled post ({last_crawled_link}), stopping crawling for {category_name}.")
                 found_last_crawled = True
                 break
-            newly_crawled_posts.append(post)
+            else: # 새로운 게시글인 경우에만 추가
+                newly_crawled_posts.append(post)
         
         if found_last_crawled:
             break
