@@ -6,3 +6,5 @@ openpyxl
 flask
 gunicorn
 mysql-connector-python
+pytest
+pytest-mock
