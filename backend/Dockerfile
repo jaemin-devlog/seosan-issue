@@ -1,5 +1,5 @@
 # 1단계: Gradle 빌드용 컨테이너
-FROM gradle:8.7.0-jdk21-alpine AS builder
+FROM gradle:8.10-jdk21-alpine AS builder
 
 WORKDIR /app
 
