@@ -34,11 +34,8 @@ services:
       db:
         condition: service_healthy
     restart: always
-    environment:
-      DB_HOST: db
-      DB_USER: root
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: seosan_issue_db
+    env_file:
+      - ./.env
 
   # Spring Boot 백엔드 서비스 (로컬 빌드)
   backend:
