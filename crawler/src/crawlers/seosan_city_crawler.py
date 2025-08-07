@@ -4,7 +4,7 @@ import requests
 import re
 from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor
-from src.config import HEADERS, MAX_CRAWL_PAGES
+from src.crawler_config import HEADERS, MAX_CRAWL_PAGES
 from src.database import get_last_crawled_link, update_last_crawled_link
 import logging
 
@@ -15,17 +15,21 @@ session.headers.update(HEADERS)
 def parse_detail_page(url):
     try:
         res = session.get(url, timeout=(10, 20))
-        res.encoding = 'euc-kr'
         res.raise_for_status()
+        res.encoding = res.apparent_encoding  # 인코딩 자동 감지 사용
         soup = BeautifulSoup(res.text, "lxml")
+        
         content_el = soup.select_one("#bbs_content, .bbs_content, td.bbs_content")
         if not content_el:
             logging.warning(f"Content element not found for URL: {url}")
             return ""
+
         for c in content_el.find_all(string=lambda t: isinstance(t, Comment)):
             c.extract()
+
         text = content_el.get_text("\n").strip()
         text = re.sub(r'[\xa0\t\r\n]+', ' ', text).strip()
+
         return text
     except requests.exceptions.RequestException as e:
         logging.error(f"RequestException while parsing detail page {url}: {e}", exc_info=True)
@@ -38,8 +42,8 @@ def get_post_info(page, base_url, category_name):
     url = f"{base_url}{page}"
     try:
         res = session.get(url, timeout=(10, 20))
-        res.encoding = 'euc-kr'
         res.raise_for_status()
+        res.encoding = res.apparent_encoding # 인코딩 자동 감지 사용
         soup = BeautifulSoup(res.text, 'lxml')
     except requests.exceptions.RequestException as e:
         logging.error(f"RequestException while fetching post info for page {page}, category {category_name}: {e}", exc_info=True)
@@ -57,13 +61,17 @@ def get_post_info(page, base_url, category_name):
 
         try:
             post_id = int(tds[0].text.strip())
-        except ValueError:
+        except (ValueError, IndexError):
             post_id = 0
+        
+        if not tds or len(tds) < 4:
+            continue
 
         title_tag = tds[1].select_one('a')
         if not title_tag:
             logging.warning(f"Title tag not found for a row on page {page}, category {category_name}")
             continue
+        
         title = title_tag.text.strip()
         link = urljoin(base_url, title_tag['href'])
 
@@ -73,19 +81,17 @@ def get_post_info(page, base_url, category_name):
         post_data['content'] = ''
 
         if category_name.startswith("복지정보"):
-            # 복지정보 게시판: 파일, 조회수, 작성일
             post_data['attachment'] = 'Y' if tds[2].select_one('img') else 'N'
             post_data['views'] = tds[3].text.strip()
             post_data['date'] = tds[4].text.strip()
         else:
-            # 그 외 게시판: 담당부서, 작성일
             post_data['department'] = tds[2].text.strip()
             post_data['date'] = tds[3].text.strip()
 
         posts_on_page.append(post_data)
         links_to_fetch.append(link)
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         contents = list(executor.map(parse_detail_page, links_to_fetch))
 
     for i, content in enumerate(contents):
@@ -95,24 +101,18 @@ def get_post_info(page, base_url, category_name):
 
 def crawl_all_pages(category_name, base_url):
     logging.debug(f"crawl_all_pages received base_url: {base_url}")
-    all_posts = []
     newly_crawled_posts = []
-    total_pages = 1
     
-    # last_crawled_link = get_last_crawled_link(category_name)
-    # if last_crawled_link:
-    #     logging.info(f"Last crawled link for {category_name}: {last_crawled_link}")
-    # else:
-    #     logging.info(f"No previous crawled link found for {category_name}.")
     last_crawled_link = None # 항상 전체 크롤링을 위해 None으로 설정
 
     logging.info(f'--- {category_name} 크롤링 시작 ---')
     logging.info("첫 페이지에서 전체 페이지 수 파악 중...")
     first_page_url = f"{base_url}1"
+    
     try:
         res = session.get(first_page_url, timeout=(10, 20))
-        res.encoding = 'euc-kr'
         res.raise_for_status()
+        res.encoding = res.apparent_encoding # 인코딩 자동 감지 사용
         soup = BeautifulSoup(res.text, 'lxml')
     except requests.exceptions.RequestException as e:
         logging.error(f"RequestException while fetching first page for {category_name}: {e}", exc_info=True)
@@ -121,6 +121,7 @@ def crawl_all_pages(category_name, base_url):
         logging.error(f"Unexpected error while fetching first page for {category_name}: {e}", exc_info=True)
         return []
 
+    total_pages = 1
     pagination_links = soup.select('.pagination .page_wrap a')
     if pagination_links:
         max_page_from_links = 0
@@ -156,11 +157,9 @@ def crawl_all_pages(category_name, base_url):
             newly_crawled_posts.append(post)
         
         if found_last_crawled:
-            break # Stop crawling further pages if last crawled post was found
+            break
 
     if newly_crawled_posts:
-        # 새로 크롤링된 게시물 중 가장 최신 게시물의 링크를 저장
-        # posts_in_page는 최신순으로 정렬되어 있다고 가정
         update_last_crawled_link(category_name, newly_crawled_posts[0]['link'])
         logging.info(f"총 {len(newly_crawled_posts)}개의 새로운 게시글을 발견했습니다.")
     else:
