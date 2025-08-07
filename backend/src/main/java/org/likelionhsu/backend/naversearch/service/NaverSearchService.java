@@ -1,4 +1,4 @@
-package org.likelionhsu.backend.crawler.service;
+package org.likelionhsu.backend.naversearch.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

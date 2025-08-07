@@ -1,8 +1,8 @@
-package org.likelionhsu.backend.crawler.service;
+package org.likelionhsu.backend.naversearch.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.likelionhsu.backend.crawler.config.NaverSearchProperties;
+import org.likelionhsu.backend.common.config.NaverSearchProperties;
 import org.likelionhsu.backend.post.domain.Post;
 import org.likelionhsu.backend.post.service.PostService;
 import org.springframework.scheduling.annotation.Scheduled;

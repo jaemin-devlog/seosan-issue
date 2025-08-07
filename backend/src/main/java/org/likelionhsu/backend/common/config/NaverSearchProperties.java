@@ -1,4 +1,4 @@
-package org.likelionhsu.backend.crawler.config;
+package org.likelionhsu.backend.common.config;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -1,7 +1,7 @@
-package org.likelionhsu.backend.crawler.controller;
+package org.likelionhsu.backend.naversearch.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.likelionhsu.backend.crawler.service.NaverSearchService;
+import org.likelionhsu.backend.naversearch.service.NaverSearchService;
 import org.likelionhsu.backend.post.domain.Post;
 import org.likelionhsu.backend.post.service.PostService;
 import org.springframework.http.ResponseEntity;
