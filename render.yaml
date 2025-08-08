@@ -45,14 +45,8 @@ services:
     dockerfilePath: backend/Dockerfile
     plan: free
     envVars:
-      - key: SERVER_PORT
+      - key: PORT
         value: "8083"
-      - key: DB_HOST
-        value: db
-      - key: DB_NAME
-        value: seosan_issue_db
-      - key: DB_PASSWORD
-        sync: false
       - key: CRAWLER_API_URL
         value: http://crawler:5001
       - key: SPRING_DATASOURCE_URL

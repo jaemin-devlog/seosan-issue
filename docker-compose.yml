@@ -1,7 +1,4 @@
-version: '3.8'
-
 services:
-  # MySQL 데이터베이스 서비스
   db:
     image: mysql:8.0
     container_name: seosan-mysql-db
@@ -14,7 +11,6 @@ services:
     volumes:
       - db-data:/var/lib/mysql
     healthcheck:
-      # CMD 형태는 환경변수 확장 안 됨 → CMD-SHELL 로 변경
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$DB_PASSWORD"]
       interval: 5s
       timeout: 20s
@@ -23,7 +19,6 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
 
-  # Python 크롤러 API 서비스 (로컬 빌드)
   crawler:
     build:
       context: ./crawler
@@ -37,38 +32,32 @@ services:
     restart: always
     env_file:
       - ./.env
+    environment:
+      PORT: 5001
+      DB_HOST: db
+      DB_NAME: seosan_issue_db
 
-  # Spring Boot 백엔드 서비스 (로컬 빌드)
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
     container_name: seosan-backend-app
     ports:
-      - "8083:8083"   # 앱 포트를 8083으로 노출
+      - "8083:8083"
     depends_on:
       db:
         condition: service_healthy
       crawler:
         condition: service_started
     restart: always
+    env_file:
+      - ./.env
     environment:
-      # 앱 포트 일치 (Tomcat 8083)
-      SERVER_PORT: 8083
-
-      # 크롤러 베이스 URL
+      PORT: 8083
       CRAWLER_API_URL: http://crawler:5001
-
-      # 데이터베이스 연결 정보 (컨테이너 간 네트워크는 'db:3306')
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/seosan_issue_db?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_PROFILES_ACTIVE: prod
-
-      # 외부 API 키
-      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
-      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
-      KMA_SERVICE_KEY: ${KMA_SERVICE_KEY}
 
 volumes:
   db-data:
