@@ -6,7 +6,7 @@ services:
     image: mysql:8.0
     container_name: seosan-mysql-db
     ports:
-      - "3306:3306"
+      - "3307:3306"
     environment:
       MYSQL_DATABASE: seosan_issue_db
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
@@ -14,10 +14,11 @@ services:
     volumes:
       - db-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$DB_PASSWORD"]
+      # CMD 형태는 환경변수 확장 안 됨 → CMD-SHELL 로 변경
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$DB_PASSWORD"]
+      interval: 5s
       timeout: 20s
       retries: 10
-      interval: 5s
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -44,21 +45,30 @@ services:
       dockerfile: backend/Dockerfile
     container_name: seosan-backend-app
     ports:
-      - "8082:8082"
+      - "8083:8083"   # 앱 포트를 8083으로 노출
     depends_on:
       db:
         condition: service_healthy
+      crawler:
+        condition: service_started
     restart: always
     environment:
-      # 데이터베이스 연결 정보
+      # 앱 포트 일치 (Tomcat 8083)
+      SERVER_PORT: 8083
+
+      # 크롤러 베이스 URL
+      CRAWLER_API_URL: http://crawler:5001
+
+      # 데이터베이스 연결 정보 (컨테이너 간 네트워크는 'db:3306')
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/seosan_issue_db?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_PROFILES_ACTIVE: prod
+
       # 외부 API 키
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
       KMA_SERVICE_KEY: ${KMA_SERVICE_KEY}
 
 volumes:
-  db-data: # MySQL 데이터를 영속적으로 저장하기 위한 볼륨
+  db-data:
