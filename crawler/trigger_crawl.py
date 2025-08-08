@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'crawler', 'src'))
 
 from crawler_config import CRAWL_CONFIGS
 
-output_filename = 'output.json'
+output_filename = '../output.json'
 
 # 데이터베이스 초기화 함수
 def reset_db_crawl_history():
