@@ -26,16 +26,16 @@ def reset_crawl_history():
         conn = get_db_connection()
         if not conn:
             return jsonify({"error": "Database connection failed."}), 500
-        
+
         cursor = conn.cursor()
         cursor.execute("DELETE FROM last_crawled_info")
         conn.commit()
-        
+
         deleted_rows = cursor.rowcount
-        
+
         cursor.close()
         conn.close()
-        
+
         logging.info(f"RESET SUCCESSFUL: {deleted_rows} rows deleted from last_crawled_info.")
         return jsonify({"message": f"RESET SUCCESSFUL. Deleted {deleted_rows} rows."}), 200
     except Exception as e:
@@ -82,3 +82,24 @@ def start_crawling():
     except Exception as e:
         logging.error(f"Error during crawling for category {category_name}: {e}", exc_info=True)
         return jsonify({"error": "An error occurred during crawling."}), 500
+
+
+@app.route('/crawl_all', methods=['GET'])
+def crawl_all():
+    """모든 카테고리를 순차적으로 크롤링합니다."""
+    try:
+        summary = []
+        total_new = 0
+        for cfg in CRAWL_CONFIGS:
+            category_name = cfg.get('category_name')
+            base_url = cfg.get('base_url')
+            if not category_name or not base_url:
+                continue
+            posts = crawl_all_pages(category_name, base_url)
+            # DB 저장은 crawl_all_pages 내부 save_to_db 사용 가정
+            summary.append({"category": category_name, "new": len(posts)})
+            total_new += len(posts)
+        return jsonify({"ok": True, "total_new": total_new, "summary": summary}), 200
+    except Exception as e:
+        logging.error(f"Error during crawl_all: {e}", exc_info=True)
+        return jsonify({"ok": False, "error": "An error occurred during crawl_all."}), 500
