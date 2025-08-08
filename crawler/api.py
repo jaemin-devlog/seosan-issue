@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from src.crawlers.seosan_city_crawler import crawl_all_pages
 from src.database import init_db, get_db_connection
 from src.crawler_config import CRAWL_CONFIGS # CRAWL_CONFIGS 임포트
+from bart import summarize_text  # Import summarize_text function
 import json
 
 app = Flask(__name__)
@@ -103,3 +104,23 @@ def crawl_all():
     except Exception as e:
         logging.error(f"Error during crawl_all: {e}", exc_info=True)
         return jsonify({"ok": False, "error": "An error occurred during crawl_all."}), 500
+
+@app.route('/summarize', methods=['POST'])
+def summarize():
+    """
+    요약 API 엔드포인트. POST 요청으로 텍스트를 받아 요약된 결과를 반환합니다.
+    """
+    try:
+        data = request.get_json()
+        text = data.get('text', '')
+
+        if not text:
+            return jsonify({"error": "No text provided"}), 400
+
+        # Summarize the text using the function from bart.py
+        summary = summarize_text(text)
+
+        return jsonify({"summary": summary}), 200
+    except Exception as e:
+        logging.error(f"Error during summarization: {e}", exc_info=True)
+        return jsonify({"error": "An error occurred during summarization."}), 500

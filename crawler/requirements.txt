@@ -8,3 +8,5 @@ gunicorn
 mysql-connector-python
 pytest
 pytest-mock
+transformers
+torch
