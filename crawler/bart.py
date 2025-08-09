@@ -12,7 +12,7 @@ def summarize_text(content: str) -> str:
     inputs = tokenizer([input_text], max_length=1024, return_tensors="pt")
     summary_ids = model.generate(
         inputs["input_ids"],
-        max_length=100,
+        max_length=200,
         min_length=30,
         num_beams=2,
         length_penalty=2.0,

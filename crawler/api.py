@@ -1,9 +1,15 @@
 import logging
+from dotenv import load_dotenv
+
+# .env 파일에서 환경 변수 로드
+load_dotenv()
+
 from flask import Flask, request, jsonify
 from src.crawlers.seosan_city_crawler import crawl_all_pages
 from src.database import init_db, get_db_connection
 from src.crawler_config import CRAWL_CONFIGS # CRAWL_CONFIGS 임포트
 from bart import summarize_text  # Import summarize_text function
+
 import json
 
 app = Flask(__name__)
@@ -97,7 +103,9 @@ def crawl_all():
             if not category_name or not base_url:
                 continue
             posts = crawl_all_pages(category_name, base_url)
-            # DB 저장은 crawl_all_pages 내부 save_to_db 사용 가정
+            if posts:
+                from src.database import save_to_db
+                save_to_db(posts, category_name)
             summary.append({"category": category_name, "new": len(posts)})
             total_new += len(posts)
         return jsonify({"ok": True, "total_new": total_new, "summary": summary}), 200
@@ -124,3 +132,6 @@ def summarize():
     except Exception as e:
         logging.error(f"Error during summarization: {e}", exc_info=True)
         return jsonify({"error": "An error occurred during summarization."}), 500
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
