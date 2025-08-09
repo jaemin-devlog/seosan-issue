@@ -126,3 +126,5 @@ GET	/posts	게시글 목록 조회
 GET	/posts/{id}	게시글 상세 조회
 GET	/weather	날씨 조회
 GET	/crawl?category={name}	특정 카테고리 크롤링 실행
+
+ai 추가 예정 
