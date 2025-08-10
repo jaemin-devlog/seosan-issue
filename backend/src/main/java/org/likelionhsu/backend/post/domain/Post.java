@@ -36,12 +36,6 @@ public class Post {
     @Enumerated(EnumType.STRING) @Column(nullable = false)
     private Category category; // 게시물 대분류 카테고리
 
-    @Enumerated(EnumType.STRING)
-    private WelfareCategory welfareCategory; // 복지 세부 카테고리
-
-    @Enumerated(EnumType.STRING)
-    private Emotion emotion; // 감정 분석 결과
-
     private String department; // 담당 부서
 
     private Integer views; // 조회수
@@ -51,15 +45,13 @@ public class Post {
 
 
     @Builder
-    public Post(String title, String content, String link, String pubDate, String region, Category category, WelfareCategory welfareCategory, Emotion emotion, String department, Integer views, LocalDateTime crawledAt) {
+    public Post(String title, String content, String link, String pubDate, String region, Category category, String department, Integer views, LocalDateTime crawledAt) {
         this.title = title;
         this.content = content;
         this.link = link;
         this.pubDate = pubDate;
         this.region = region;
         this.category = category;
-        this.welfareCategory = welfareCategory;
-        this.emotion = emotion;
         this.department = department;
         this.views = views;
         this.crawledAt = crawledAt;

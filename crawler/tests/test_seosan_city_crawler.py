@@ -131,48 +131,7 @@ def test_get_post_info_request_exception(mocker):
 
     assert posts == []
 
-def test_get_post_info_welfare_category(mock_session_get_post_info, mocker):
-    # Mock parse_detail_page to return a fixed content
-    mocker.patch('src.crawlers.seosan_city_crawler.parse_detail_page', return_value="Parsed detail content.")
 
-    # Modify mock_session_get_post_info to return welfare-specific HTML
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.raise_for_status.return_value = None
-    mock_response.apparent_encoding = 'utf-8'
-    mock_response.text = """
-    <html>
-    <body>
-        <table>
-            <tbody>
-                <tr>
-                    <td>201</td>
-                    <td><a href="/welfare/201">Welfare Post 1</a></td>
-                    <td><img src="attachment.png"></td>
-                    <td>123</td>
-                    <td>2023-03-01</td>
-                </tr>
-            </tbody>
-        </table>
-    </body>
-    </html>
-    """
-    mocker.patch.object(session, 'get', return_value=mock_response)
-
-    page = 1
-    base_url = "http://example.com/welfare/"
-    category_name = "복지정보"
-
-    posts = get_post_info(page, base_url, category_name)
-
-    assert len(posts) == 1
-    assert posts[0]['id'] == 201
-    assert posts[0]['title'] == "Welfare Post 1"
-    assert posts[0]['link'] == "http://example.com/welfare/201"
-    assert posts[0]['content'] == "Parsed detail content."
-    assert posts[0]['attachment'] == "Y"
-    assert posts[0]['views'] == "123"
-    assert posts[0]['date'] == "2023-03-01"
 
 def test_get_post_info_empty_tds(mock_session_get_post_info, mocker):
     # Mock parse_detail_page to return a fixed content

@@ -53,7 +53,7 @@ class PostControllerTest {
                 .link("http://test.com")
                 .pubDate("2023-01-01")
                 .region("서산시")
-                .category(Category.PUBLIC_INSTITUTION) // String 대신 Category enum 직접 사용
+                .category(Category.NOTICE) // String 대신 Category enum 직접 사용
                 .crawledAt(LocalDateTime.now())
                 .build();
 
@@ -88,7 +88,7 @@ class PostControllerTest {
     void getFilteredPosts_successWithFilters() throws Exception {
         // Given
         String region = "서산시";
-        Category category = Category.PUBLIC_INSTITUTION;
+        Category category = Category.NOTICE;
         List<PostResponseDto> mockResponseList = Arrays.asList(
                 PostResponseDto.builder()
                         .id(1L)
@@ -136,7 +136,7 @@ class PostControllerTest {
                         .title("All Post 2")
                         .pubDate("2023-01-02")
                         .region("태안군")
-                        .category(Category.WELFARE)
+                        .category(Category.WELFARE_SENIOR)
                         .build()
         );
 

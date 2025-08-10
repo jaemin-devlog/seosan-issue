@@ -3,7 +3,6 @@ package org.likelionhsu.backend.post.dto.response;
 import lombok.Builder;
 import lombok.Getter;
 import org.likelionhsu.backend.post.domain.Category;
-import org.likelionhsu.backend.post.domain.Emotion;
 import org.likelionhsu.backend.post.domain.Post;
 
 @Getter
@@ -14,7 +13,6 @@ public class PostResponseDto {
     private final String pubDate; // 게시일
     private final String region; // 지역 (읍면동)
     private final Category category; // 게시물 대분류 카테고리
-    private final Emotion emotion; // 감정 분석 결과
 
     public static PostResponseDto from(Post post) {
         return PostResponseDto.builder()
@@ -23,7 +21,6 @@ public class PostResponseDto {
                 .pubDate(post.getPubDate())
                 .region(post.getRegion())
                 .category(post.getCategory())
-                .emotion(post.getEmotion())
                 .build();
     }
 }

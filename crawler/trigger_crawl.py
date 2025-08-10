@@ -3,10 +3,7 @@ import json
 import sys
 import os
 
-# config.py 파일의 경로를 sys.path에 추가
-sys.path.append(os.path.join(os.path.dirname(__file__), 'crawler', 'src'))
-
-from crawler_config import CRAWL_CONFIGS
+from src.crawler_config import CRAWL_CONFIGS
 
 output_filename = '../output.json'
 
@@ -30,11 +27,12 @@ if __name__ == "__main__":
 
     for config in CRAWL_CONFIGS:
         category_name = config['category_name']
-        crawl_url = f'http://localhost:5001/crawl?category={category_name}'
+        crawl_url = 'http://localhost:5001/crawl'
+        params = {'category': category_name}
 
         try:
             print(f"\n'{category_name}' 카테고리 데이터를 {crawl_url}에서 요청 중...")
-            response = requests.get(crawl_url)
+            response = requests.get(crawl_url, params=params)
             response.raise_for_status()
 
             data = response.json()

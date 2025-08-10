@@ -55,9 +55,6 @@ services:
     environment:
       PORT: 8083
       CRAWLER_API_URL: http://crawler:5001
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/seosan_issue_db?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_PROFILES_ACTIVE: prod
 
 volumes:
   db-data:

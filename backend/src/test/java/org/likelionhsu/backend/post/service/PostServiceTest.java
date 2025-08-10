@@ -50,7 +50,7 @@ class PostServiceTest {
                 .link("http://test.com")
                 .pubDate("2023-01-01")
                 .region("서산시")
-                .category(Category.PUBLIC_INSTITUTION)
+                .category(Category.NOTICE)
                 .crawledAt(LocalDateTime.now())
                 .build();
 
@@ -79,7 +79,7 @@ class PostServiceTest {
                 .crawledAt(testPost.getCrawledAt())
                 .build();
         try {
-            java.lang.reflect.Field idField = postWithId.getClass().getDeclaredField("id");
+            java.lang.reflect.Field idField = Post.class.getDeclaredField("id");
             idField.setAccessible(true);
             idField.set(postWithId, 1L);
         } catch (NoSuchFieldException | IllegalAccessException e) {
@@ -115,7 +115,7 @@ class PostServiceTest {
     void findPostsByFilter_success() {
         // Given
         String region = "서산시";
-        Category category = Category.PUBLIC_INSTITUTION;
+        Category category = Category.NOTICE;
         List<Post> filteredPosts = Arrays.asList(testPost);
 
         // Mock PostRepository.findAll(Specification) to return filteredPosts
@@ -137,7 +137,7 @@ class PostServiceTest {
     void findPostsByFilter_noResult() {
         // Given
         String region = "서산시";
-        Category category = Category.WELFARE;
+        Category category = Category.WELFARE_SENIOR;
 
         // Mock PostRepository.findAll(Specification) to return an empty list
         when(postRepository.findAll(any(Specification.class))).thenReturn(Collections.emptyList());

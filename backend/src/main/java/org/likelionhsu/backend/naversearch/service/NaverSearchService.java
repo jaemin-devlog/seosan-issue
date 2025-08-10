@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.backend.common.exception.CustomException;
 import org.likelionhsu.backend.common.exception.ErrorCode;
 import org.likelionhsu.backend.post.domain.Category;
-import org.likelionhsu.backend.post.domain.Emotion;
 import org.likelionhsu.backend.post.domain.Post;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -97,7 +96,6 @@ public class NaverSearchService {
                         .pubDate(formattedPubDate)
                         .region(region) // 전달받은 region 정보 반영
                         .category(category)
-                        .emotion(Emotion.NEUTRAL) // 초기값, 추후 AI 분석 결과 반영
                         .department(bloggerName) // 블로그 이름 저장
                         .views(null) // 네이버 검색 결과에는 조회수 정보 없음
                         .crawledAt(LocalDateTime.now())
