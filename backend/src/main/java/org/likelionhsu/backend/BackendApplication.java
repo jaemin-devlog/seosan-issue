@@ -20,11 +20,6 @@ public class BackendApplication {
         Dotenv.load();
         SpringApplication.run(BackendApplication.class, args);
     }
-
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
 }
 
 

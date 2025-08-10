@@ -15,6 +15,12 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQL8Dialect   # MySQL 8.x 환경
+  main:
+    allow-bean-definition-overriding: true
+
+flask:
+  server:
+    url: http://localhost:5000
 
 naver:
   api:
