@@ -27,7 +27,13 @@ RUN ./gradlew -Dorg.gradle.internal.http.connectionTimeout=120000 \
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-ENV SPRING_PROFILES_ACTIVE=production
+# curl 설치
+RUN apk add --no-cache curl
+
+ENV SPRING_PROFILES_ACTIVE=docker
+
+# .env 파일 복사
+COPY .env .
 
 COPY --from=builder /app/backend/build/libs/*.jar app.jar
 

@@ -7,6 +7,8 @@ services:
     environment:
       MYSQL_DATABASE: seosan_issue_db
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
       TZ: Asia/Seoul
     volumes:
       - db-data:/var/lib/mysql
