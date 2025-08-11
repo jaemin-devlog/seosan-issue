@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # MySQL 연결 설정 (환경 변수 사용)
 db_config = {
     'host': os.environ.get('DB_HOST', 'localhost'),
-    'user': 'root',
+    'user': os.environ.get('DB_USER', 'root'),
     'password': os.environ.get('DB_PASSWORD'),
     'database': os.environ.get('DB_NAME', 'seosan_issue_db')
 }
