@@ -1,41 +1,30 @@
 package org.likelionhsu.backend.flask;
 
+import lombok.RequiredArgsConstructor;
 import org.likelionhsu.backend.flask.dto.SummarizeRequest;
 import org.likelionhsu.backend.flask.dto.SummarizeResponse;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
 
 @RestController
 @RequestMapping("/flask")
+@RequiredArgsConstructor
 public class FlaskController {
 
-    private final RestTemplate restTemplate;
-
-    @Value("${flask.server.url}")
-    private String flaskServerUrl;
-
-    public FlaskController(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
-    }
-
+    private final FlaskService flaskService;
 
     @GetMapping("/crawl_all")
     public ResponseEntity<?> crawlAll() {
-        String url = flaskServerUrl + "/crawl_all";
-        return restTemplate.getForEntity(url, Object.class);
+        return flaskService.crawlAll();
     }
 
     @PostMapping("/summarize")
     public ResponseEntity<SummarizeResponse> summarize(@RequestBody SummarizeRequest request) {
-        String url = flaskServerUrl + "/summarize";
-        return restTemplate.postForEntity(url, request, SummarizeResponse.class);
+        return flaskService.summarize(request);
     }
 
     @GetMapping("/crawl_popular_terms")
     public ResponseEntity<?> getPopularTerms() {
-        String url = flaskServerUrl + "/crawl_popular_terms";
-        return restTemplate.getForEntity(url, Object.class);
+        return flaskService.getPopularTerms();
     }
 }
