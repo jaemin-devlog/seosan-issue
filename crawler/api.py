@@ -6,6 +6,7 @@ load_dotenv()
 
 from flask import Flask, request, jsonify
 from src.crawlers.seosan_city_crawler import crawl_all_pages
+from src.crawlers.seosan_popular_search_crawler import crawl_popular_search_terms
 from src.database import init_db, get_db_connection
 from src.crawler_config import CRAWL_CONFIGS # CRAWL_CONFIGS 임포트
 from bart import summarize_text  # Import summarize_text function
@@ -132,6 +133,19 @@ def summarize():
     except Exception as e:
         logging.error(f"Error during summarization: {e}", exc_info=True)
         return jsonify({"error": "An error occurred during summarization."}), 500
+
+@app.route('/crawl_popular_terms', methods=['GET'])
+def get_popular_terms():
+    """
+    인기 검색어(일간, 주간)를 크롤링하여 반환하는 API 엔드포인트.
+    """
+    try:
+        popular_terms = crawl_popular_search_terms()
+        logging.info(f"Crawled popular search terms: {len(popular_terms['daily'])} daily, {len(popular_terms['weekly'])} weekly.")
+        return jsonify(popular_terms), 200
+    except Exception as e:
+        logging.error(f"Error during crawling popular terms: {e}", exc_info=True)
+        return jsonify({"error": "An error occurred during crawling popular terms."}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

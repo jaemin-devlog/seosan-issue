@@ -11,3 +11,4 @@ pytest-mock
 python-dotenv
 transformers
 torch
+chardet
