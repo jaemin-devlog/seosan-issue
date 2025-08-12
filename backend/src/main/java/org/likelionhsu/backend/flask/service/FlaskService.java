@@ -1,7 +1,7 @@
-package org.likelionhsu.backend.flask;
+package org.likelionhsu.backend.flask.service;
 
-import org.likelionhsu.backend.flask.dto.SummarizeRequest;
-import org.likelionhsu.backend.flask.dto.SummarizeResponse;
+import org.likelionhsu.backend.flask.dto.request.SummarizeRequest;
+import org.likelionhsu.backend.flask.dto.response.SummarizeResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

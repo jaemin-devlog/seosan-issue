@@ -1,6 +1,6 @@
 package org.likelionhsu.backend.scheduler;
 
-import org.likelionhsu.backend.flask.FlaskController;
+import org.likelionhsu.backend.flask.controller.FlaskController;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 

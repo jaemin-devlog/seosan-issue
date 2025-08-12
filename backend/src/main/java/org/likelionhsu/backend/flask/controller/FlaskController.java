@@ -1,7 +1,7 @@
-package org.likelionhsu.backend.flask;
+package org.likelionhsu.backend.flask.controller;
 
-import org.likelionhsu.backend.flask.dto.SummarizeRequest;
-import org.likelionhsu.backend.flask.dto.SummarizeResponse;
+import org.likelionhsu.backend.flask.dto.request.SummarizeRequest;
+import org.likelionhsu.backend.flask.dto.response.SummarizeResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
