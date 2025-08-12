@@ -1,0 +1,47 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: seosan-mysql-db
+    ports: ["3307:3306"]
+    environment:
+      MYSQL_DATABASE: seosan_issue_db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    volumes: [ db-data:/var/lib/mysql ]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$DB_PASSWORD"]
+      interval: 5s
+      timeout: 20s
+      retries: 10
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+  crawler:
+    image: ${DOCKERHUB_USERNAME}/seosan-issue-crawler:latest
+    container_name: seosan-crawler-api
+    ports: ["5001:5001"]
+    restart: always
+    env_file: [ ./.env ]
+    environment:
+      PORT: 5001
+      DB_HOST: db
+      DB_NAME: seosan_issue_db
+    depends_on:
+      db: { condition: service_healthy }
+
+  backend:
+    image: ${DOCKERHUB_USERNAME}/seosan-issue-backend:latest
+    container_name: seosan-backend-app
+    ports: ["8083:8083"]
+    restart: always
+    env_file: [ ./.env ]
+    environment:
+      PORT: 8083
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      db: { condition: service_healthy }
+      crawler: { condition: service_started }
+
+volumes:
+  db-data:
