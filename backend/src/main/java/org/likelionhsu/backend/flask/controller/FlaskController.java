@@ -38,4 +38,10 @@ public class FlaskController {
         String url = crawlerApiUrl + "/crawl_popular_terms";
         return restTemplate.getForEntity(url, Object.class);
     }
+
+    @GetMapping("/content_stats")
+    public ResponseEntity<?> getContentStats() {
+        String url = crawlerApiUrl + "/content_stats";
+        return restTemplate.getForEntity(url, Object.class);
+    }
 }

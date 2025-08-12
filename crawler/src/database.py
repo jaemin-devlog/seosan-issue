@@ -173,3 +173,40 @@ def update_last_crawled_link(category_name, last_crawled_link):
     conn.commit()
     cursor.close()
     conn.close()
+
+def get_content_statistics():
+    """
+    전체 콘텐츠 수, 오늘의 수집 수, 전날 수집 수를 반환합니다.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None
+
+    cursor = conn.cursor()
+    stats = {
+        "total_count": 0,
+        "today_count": 0,
+        "yesterday_count": 0
+    }
+
+    try:
+        # 전체 콘텐츠 수
+        cursor.execute("SELECT COUNT(*) FROM post;")
+        stats["total_count"] = cursor.fetchone()[0]
+
+        # 오늘의 수집 수
+        cursor.execute("SELECT COUNT(*) FROM post WHERE DATE(crawled_at) = CURDATE();")
+        stats["today_count"] = cursor.fetchone()[0]
+
+        # 전날 수집 수
+        cursor.execute("SELECT COUNT(*) FROM post WHERE DATE(crawled_at) = CURDATE() - INTERVAL 1 DAY;")
+        stats["yesterday_count"] = cursor.fetchone()[0]
+
+    except Exception as e:
+        logging.error(f"Error fetching content statistics: {e}", exc_info=True)
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
+    return stats
