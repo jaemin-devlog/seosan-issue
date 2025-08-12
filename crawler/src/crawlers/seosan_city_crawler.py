@@ -29,6 +29,7 @@ def parse_detail_page(url):
 
         text = content_el.get_text("\n").strip()
         text = re.sub(r'\s+', ' ', text).strip() # 모든 공백 문자를 하나의 공백으로 줄이고 양쪽 공백 제거
+        text = text.replace('. ', '.\n') # 마침표 뒤에 공백이 오는 경우 줄바꿈 처리
 
         return text
     except requests.exceptions.RequestException as e:

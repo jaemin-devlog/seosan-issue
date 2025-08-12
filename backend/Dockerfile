@@ -1,3 +1,4 @@
+#backend-Dockerfile
 FROM gradle:8.10-jdk21-alpine AS builder
 WORKDIR /app
 
@@ -29,8 +30,10 @@ WORKDIR /app
 
 ENV SPRING_PROFILES_ACTIVE=production
 
+COPY .env .
+
 COPY --from=builder /app/backend/build/libs/*.jar app.jar
 
 # Render/로컬 모두 $PORT 지원 (기본 8083)
 EXPOSE 8083
-ENTRYPOINT ["sh","-c","java -jar app.jar --server.port=${PORT:-8083}"]
+ENTRYPOINT ["sh","-c","sleep 10 && java -jar app.jar --server.port=${PORT:-8083}"]

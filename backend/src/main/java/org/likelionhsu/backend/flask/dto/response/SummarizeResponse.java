@@ -1,4 +1,4 @@
-package org.likelionhsu.backend.flask.dto;
+package org.likelionhsu.backend.flask.dto.response;
 
 public class SummarizeResponse {
     private String summary;

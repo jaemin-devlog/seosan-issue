@@ -1,3 +1,4 @@
+#docker-compose.yml
 services:
   db:
     image: mysql:8.0
@@ -54,7 +55,7 @@ services:
       - ./.env
     environment:
       PORT: 8083
-      CRAWLER_API_URL: http://crawler:5001
+      SPRING_PROFILES_ACTIVE: docker
 
 volumes:
   db-data:

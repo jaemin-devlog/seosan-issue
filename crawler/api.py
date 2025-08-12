@@ -7,7 +7,7 @@ load_dotenv()
 from flask import Flask, request, jsonify
 from src.crawlers.seosan_city_crawler import crawl_all_pages
 from src.crawlers.seosan_popular_search_crawler import crawl_popular_search_terms
-from src.database import init_db, get_db_connection
+from src.database import init_db, get_db_connection, get_content_statistics
 from src.crawler_config import CRAWL_CONFIGS # CRAWL_CONFIGS 임포트
 from bart import summarize_text  # Import summarize_text function
 
@@ -147,5 +147,40 @@ def get_popular_terms():
         logging.error(f"Error during crawling popular terms: {e}", exc_info=True)
         return jsonify({"error": "An error occurred during crawling popular terms."}), 500
 
+@app.route('/content_stats', methods=['GET'])
+def get_content_stats():
+    """
+    전체 콘텐츠 수, 오늘의 수집 수, 전날 대비 증가율을 반환하는 API 엔드포인트.
+    """
+    try:
+        stats = get_content_statistics()
+        if stats is None:
+            return jsonify({"error": "Failed to retrieve content statistics."}), 500
+
+        total_count = stats["total_count"]
+        today_count = stats["today_count"]
+        yesterday_count = stats["yesterday_count"]
+
+        percentage_increase = 0.0
+        if yesterday_count > 0:
+            percentage_increase = ((today_count - yesterday_count) / yesterday_count) * 100
+        elif today_count > 0:
+            percentage_increase = 100.0
+
+        response = {
+            "total_content_count": total_count,
+            "today_collected_count": today_count,
+            "yesterday_collected_count": yesterday_count,
+            "percentage_increase_from_yesterday": round(percentage_increase, 2)
+        }
+        logging.info(f"Content statistics requested: {response}")
+        return jsonify(response), 200
+    except Exception as e:
+        logging.error(f"Error getting content statistics: {e}", exc_info=True)
+        return jsonify({"error": "An error occurred while fetching content statistics."}), 500
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # FLASK_ENV 환경 변수에 따라 디버그 모드 설정
+    # 'development'일 경우 디버그 모드 활성화, 그 외에는 비활성화
+    debug_mode = os.environ.get('FLASK_ENV') == 'development'
+    app.run(host="0.0.0.0", port=5000, debug=debug_mode)
