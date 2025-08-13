@@ -7,6 +7,19 @@ from concurrent.futures import ThreadPoolExecutor
 from src.crawler_config import HEADERS, MAX_CRAWL_PAGES
 from src.database import get_last_crawled_link, update_last_crawled_link
 import logging
+from src.regions import REGIONS # Added this line
+
+def find_specific_region(title, content):
+    """
+    제목과 내용에서 특정 지역명을 찾아 반환합니다.
+    가장 먼저 발견되는 지역명을 반환합니다.
+    """
+    text_to_search = title + " " + content
+    for region in REGIONS:
+        # '동문1동' 같은 경우 '동문'만 검색하면 안되므로 정확한 지역명으로 검색
+        if region in text_to_search:
+            return region
+    return None # 특정 지역을 찾지 못한 경우
 
 # requests.Session() 생성 (전역 세션으로 관리)
 session = requests.Session()
@@ -97,6 +110,7 @@ def get_post_info(page, base_url, category_name):
 
     for i, content in enumerate(contents):
         posts_on_page[i]['content'] = content
+        posts_on_page[i]['specific_region'] = find_specific_region(posts_on_page[i]['title'], content)
 
     return posts_on_page
 

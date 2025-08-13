@@ -12,20 +12,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.data.domain.Page;
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/posts")
+@RequestMapping("/api/posts")
 public class PostController {
 
     private final PostService postService;
 
     @GetMapping
-    public ResponseEntity<List<PostResponseDto>> getFilteredPosts(
+    public ResponseEntity<Page<PostResponseDto>> getFilteredPosts(
             @RequestParam(required = false) String region,
-            @RequestParam(required = false) Category category) {
-        List<PostResponseDto> posts = postService.findPostsByFilter(region, category);
+            @RequestParam(required = false) Category category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<PostResponseDto> posts = postService.findPostsByFilter(region, category, page, size);
         return ResponseEntity.ok(posts);
     }
 
