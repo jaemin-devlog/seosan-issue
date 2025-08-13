@@ -17,6 +17,14 @@ spring:
         dialect: org.hibernate.dialect.MySQL8Dialect   # MySQL 8.x 환경
   main:
     allow-bean-definition-overriding: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  cache:
+    type: simple  # 복수 CacheManager 사용하므로 단일자동설정 방지용 (선택)
+  profiles:
+    active: local
 
 flask:
   server:
