@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.likelionhsu.backend.naversearch.NaverSearchItemDto;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -14,6 +16,9 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -32,6 +37,7 @@ public class NaverSearchService {
     private final ObjectMapper objectMapper;
 
     private static final String NAVER_DATALAB_API_URL = "https://openapi.naver.com/v1/datalab/search";
+    private static final String BASE = "https://openapi.naver.com/v1/search";
 
     public JsonNode getDailyTrends(String startDate, String endDate, List<Map<String, Object>> keywordGroups) {
         return callNaverDatalabApi("date", startDate, endDate, keywordGroups);
@@ -65,5 +71,41 @@ public class NaverSearchService {
             log.error("네이버 데이터랩 API 호출 중 오류 발생: {}", e.getMessage());
             throw new RuntimeException("네이버 데이터랩 API 호출 실패", e);
         }
+    }
+
+    @Cacheable(cacheNames = "discovery", cacheManager = "caffeineCacheManager",
+            key = "#type + '::' + #query + '::' + #display",
+            unless = "#result == null || #result.isEmpty()")
+    public List<NaverSearchItemDto> search(String type, String query, int display) {
+        // ✅ URLEncoder로 미리 인코딩하지 말고, UriComponentsBuilder가 처리하게 두는 게 안전합니다.
+        URI uri = UriComponentsBuilder.fromHttpUrl(BASE + "/" + type + ".json")
+                .queryParam("query", query)
+                .queryParam("display", display)
+                .queryParam("start", 1)
+                .queryParam("sort", "sim")
+                .encode(StandardCharsets.UTF_8)
+                .build()
+                .toUri();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Naver-Client-Id", clientId);
+        headers.set("X-Naver-Client-Secret", clientSecret);
+
+        ResponseEntity<String> res =
+                restTemplate.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+
+        List<NaverSearchItemDto> list = new ArrayList<>();
+        try {
+            JsonNode root = objectMapper.readTree(res.getBody());
+            for (JsonNode item : root.path("items")) {
+                list.add(new NaverSearchItemDto(
+                        item.path("title").asText(),
+                        item.path("description").asText(),
+                        item.path("link").asText(),
+                        type
+                ));
+            }
+        } catch (Exception ignored) {}
+        return list;
     }
 }
