@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-MAX_CRAWL_PAGES = 10  # 최대 크롤링 페이지 수 제한
+MAX_CRAWL_PAGES = 5  # 최대 크롤링 페이지 수 제한
 
 # 요청 헤더
 HEADERS = {
