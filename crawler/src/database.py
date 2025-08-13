@@ -89,13 +89,17 @@ def map_category(category_name):
         "복지정보-여성가족": "WELFARE_WOMEN_FAMILY",
         "복지정보-아동청소년": "WELFARE_CHILD_YOUTH",
         "복지정보-청년": "WELFARE_YOUTH",
-        "보건-건강": "HEALTH_WELLNESS",
+        "보건/건강": "HEALTH_WELLNESS",
         "공지사항": "NOTICE",
         "보도자료": "PRESS_RELEASE",
         "문화소식": "CULTURE_NEWS",
         "시티투어": "CITY_TOUR",
         "관광-안내": "TOUR_GUIDE"
     }
+    # Check if the category_name ends with " 공지사항"
+    if category_name.endswith(" 공지사항"):
+        return "NOTICE" # Map all regional notices to NOTICE
+        
     return mapping.get(category_name, "UNKNOWN")
 
 def save_to_db(data, category_name):
@@ -115,11 +119,22 @@ def save_to_db(data, category_name):
             views = 0
 
         # 최종 스키마에 맞는 INSERT 쿼리
+        # 최종 스키마에 맞는 INSERT 쿼리
         insert_query = """
             INSERT INTO post (title, content, link, pub_date, region, category, department, views, crawled_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         specific_region = item.get('specific_region')
+        
+        # If specific_region was not found in title/content, try to infer from category_name
+        if not specific_region:
+            # Get the list of regions from src.regions.REGIONS
+            from src.regions import REGIONS
+            for region_name in REGIONS:
+                if category_name.startswith(region_name + " "): # e.g., "해미면 공지사항"
+                    specific_region = region_name
+                    break
+        
         region_to_save = specific_region if specific_region else '서산시 전체'
         post_data = (
             item.get('title'),
