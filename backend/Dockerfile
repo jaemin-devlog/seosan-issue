@@ -25,6 +25,8 @@ WORKDIR /app
 
 ENV SPRING_PROFILES_ACTIVE=docker
 
+COPY .env .
+
 COPY --from=builder /app/backend/build/libs/*.jar app.jar
 
 EXPOSE 8083
