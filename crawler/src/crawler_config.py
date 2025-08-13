@@ -57,5 +57,81 @@ CRAWL_CONFIGS = [
     {
         "category_name": "관광-안내",
         "base_url": "https://www.seosan.go.kr/tour/selectBbsNttList.do?bbsNo=24&key=976&pageUnit=10&searchCnd=all&searchKrwd=&integrDeptCode=&pageIndex="
+    },
+
+    {
+        "category_name": "대산읍 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=178&key=1694&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "인지면 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=187&key=1736&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "부석면 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=196&key=1769&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "팔봉면 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=206&key=1804&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "지곡면 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=217&key=1835&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "성연면 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=226&key=1863&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "음암면 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=235&key=1892&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "운산면 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=245&key=1925&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "해미면 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=254&key=1956&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "고북면 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=264&key=1990&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "부춘동 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=254&key=1956&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "동문1동 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=282&key=2046&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "동문2동 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=291&key=2074&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "수석동 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=300&key=2104&pageIndex=",
+        "pages_to_crawl": 5
+    },
+    {
+        "category_name": "석남동 공지사항",
+        "base_url": "https://www.seosan.go.kr/emd/selectBbsNttList.do?bbsNo=309&key=2133&pageIndex=",
+        "pages_to_crawl": 5
     }
 ]

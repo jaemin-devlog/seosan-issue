@@ -114,7 +114,10 @@ def get_post_info(page, base_url, category_name):
 
     return posts_on_page
 
-def crawl_all_pages(category_name, base_url):
+def crawl_all_pages(config):
+    category_name = config.get('category_name')
+    base_url = config.get('base_url')
+    pages_to_crawl_limit = config.get('pages_to_crawl', MAX_CRAWL_PAGES)
     logging.debug(f"crawl_all_pages received base_url: {base_url}")
     newly_crawled_posts = []
     
@@ -156,7 +159,7 @@ def crawl_all_pages(category_name, base_url):
         if max_page_from_links > 0:
             total_pages = max_page_from_links
     
-    pages_to_crawl = min(total_pages, MAX_CRAWL_PAGES)
+    pages_to_crawl = min(total_pages, pages_to_crawl_limit)
     logging.info(f"총 {total_pages} 페이지 중 {pages_to_crawl} 페이지를 크롤링합니다.")
 
     for page in range(1, pages_to_crawl + 1):
