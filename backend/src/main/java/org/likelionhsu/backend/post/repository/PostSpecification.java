@@ -27,4 +27,15 @@ public class PostSpecification {
             return criteriaBuilder.equal(root.get("category"), category);
         };
     }
+
+    public static Specification<Post> containsKeyword(String keyword) {
+        return (root, query, cb) -> {
+            if (keyword == null || keyword.isBlank()) return null;
+            String like = "%" + keyword + "%";
+            return cb.or(
+                    cb.like(root.get("title"), like),
+                    cb.like(root.get("content"), like)
+            );
+        };
+    }
 }
