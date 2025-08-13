@@ -7,6 +7,19 @@ from concurrent.futures import ThreadPoolExecutor
 from src.crawler_config import HEADERS, MAX_CRAWL_PAGES
 from src.database import get_last_crawled_link, update_last_crawled_link
 import logging
+from src.regions import REGIONS # Added this line
+
+def find_specific_region(title, content):
+    """
+    제목과 내용에서 특정 지역명을 찾아 반환합니다.
+    가장 먼저 발견되는 지역명을 반환합니다.
+    """
+    text_to_search = title + " " + content
+    for region in REGIONS:
+        # '동문1동' 같은 경우 '동문'만 검색하면 안되므로 정확한 지역명으로 검색
+        if region in text_to_search:
+            return region
+    return None # 특정 지역을 찾지 못한 경우
 
 # requests.Session() 생성 (전역 세션으로 관리)
 session = requests.Session()
@@ -97,10 +110,14 @@ def get_post_info(page, base_url, category_name):
 
     for i, content in enumerate(contents):
         posts_on_page[i]['content'] = content
+        posts_on_page[i]['specific_region'] = find_specific_region(posts_on_page[i]['title'], content)
 
     return posts_on_page
 
-def crawl_all_pages(category_name, base_url):
+def crawl_all_pages(config):
+    category_name = config.get('category_name')
+    base_url = config.get('base_url')
+    pages_to_crawl_limit = config.get('pages_to_crawl', MAX_CRAWL_PAGES)
     logging.debug(f"crawl_all_pages received base_url: {base_url}")
     newly_crawled_posts = []
     
@@ -142,7 +159,7 @@ def crawl_all_pages(category_name, base_url):
         if max_page_from_links > 0:
             total_pages = max_page_from_links
     
-    pages_to_crawl = min(total_pages, MAX_CRAWL_PAGES)
+    pages_to_crawl = min(total_pages, pages_to_crawl_limit)
     logging.info(f"총 {total_pages} 페이지 중 {pages_to_crawl} 페이지를 크롤링합니다.")
 
     for page in range(1, pages_to_crawl + 1):

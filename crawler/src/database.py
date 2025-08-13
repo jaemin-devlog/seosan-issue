@@ -119,12 +119,14 @@ def save_to_db(data, category_name):
             INSERT INTO post (title, content, link, pub_date, region, category, department, views, crawled_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
+        specific_region = item.get('specific_region')
+        region_to_save = specific_region if specific_region else '서산시 전체'
         post_data = (
             item.get('title'),
             item.get('content'),
             item.get('link'),
             item.get('date'),
-            '서산시 전체',
+            region_to_save,
             category_enum,
             item.get('department'),
             views,

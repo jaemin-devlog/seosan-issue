@@ -74,7 +74,7 @@ def start_crawling():
         return jsonify({"error": f"Category '{category_name}' not found."}), 404
 
     try:
-        new_posts = crawl_all_pages(category_name, base_url)
+        new_posts = crawl_all_pages(config)
         if new_posts:
             from src.database import save_to_db # save_to_db 임포트
             save_to_db(new_posts, category_name)
@@ -103,7 +103,7 @@ def crawl_all():
             base_url = cfg.get('base_url')
             if not category_name or not base_url:
                 continue
-            posts = crawl_all_pages(category_name, base_url)
+            posts = crawl_all_pages(cfg)
             if posts:
                 from src.database import save_to_db
                 save_to_db(posts, category_name)
