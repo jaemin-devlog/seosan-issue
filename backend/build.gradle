@@ -48,6 +48,7 @@ dependencies {
 
     // 유틸
     implementation 'org.apache.commons:commons-lang3:3.14.0'
+    implementation 'commons-codec:commons-codec:1.16.1'
 }
 
 dependencies {
