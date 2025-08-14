@@ -28,7 +28,7 @@ spring:
 
 flask:
   server:
-    url: http://localhost:5000
+    url: http://localhost:5001
 
 naver:
   api:
@@ -61,7 +61,7 @@ kma:
 
 crawler:
   api:
-    url: ${CRAWLER_API_URL:http://crawler:5001}
+    url: ${CRAWLER_API_URL:http://localhost:5001}
 
 logging:
   level:
