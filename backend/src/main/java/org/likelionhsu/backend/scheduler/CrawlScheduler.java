@@ -15,6 +15,6 @@ public class CrawlScheduler {
 
     @Scheduled(fixedRate = 10800000) // 3시간마다 실행 (밀리초 단위)
     public void scheduleCrawlAll() {
-        flaskController.crawlAll(null);
+        flaskController.crawlAll(2);
     }
 }

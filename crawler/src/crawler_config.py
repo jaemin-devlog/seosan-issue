@@ -12,8 +12,13 @@ HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/126.0.0.0 Safari/537.36"
     ),
-    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
 }
+
+DEFAULT_TIMEOUT = (10, 10)  # (connect, read)
+
+# ========================================
+# 카테고리별 크롤링 설정
 
 # ========================================
 # 카테고리별 크롤링 설정

@@ -19,7 +19,7 @@ public class FlaskController {
 
     @GetMapping("/crawl_all")
     public ResponseEntity<?> crawlAll(
-            @RequestParam(required = false) Integer pages
+            @RequestParam(required = false, defaultValue = "2") Integer pages
     ) {
         return flaskService.crawlAll(pages);
     }

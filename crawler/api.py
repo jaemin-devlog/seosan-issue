@@ -9,7 +9,7 @@ from src.crawlers.seosan_city_crawler import crawl_all_pages
 from src.crawlers.seosan_popular_search_crawler import crawl_popular_search_terms
 from src.database import init_db, get_content_statistics
 from src.crawler_config import CRAWL_CONFIGS
-from bart import summarize_text
+
 import os
 
 app = Flask(__name__)
@@ -101,6 +101,7 @@ def crawl_all():
 
 @app.route('/summarize', methods=['POST'])
 def summarize():
+    from bart import summarize_text
     try:
         data = request.get_json()
         text = data.get('text', '')

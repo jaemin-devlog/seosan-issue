@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import chardet
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from src.crawler_config import DEFAULT_TIMEOUT
 
 SEARCH_URL = "https://search.seosan.go.kr/RSA/front/Search.jsp"
 
@@ -68,7 +69,7 @@ def crawl_popular_search_terms() -> dict:
     popular_terms = {"daily": [], "weekly": []}
 
     try:
-        res = session.get(url, timeout=(10, 20))
+        res = session.get(url, timeout=DEFAULT_TIMEOUT)
         res.raise_for_status()
         _detect_and_set_encoding(res)
         html = res.text

@@ -1,14 +1,14 @@
-# -*- coding: utf-8 -*-
-from __future__ import annotations
-
 import logging
+import os
 import re
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Optional
 from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup, Comment
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from src.crawler_config import HEADERS, MAX_CRAWL_PAGES
 from src.database import get_last_crawled_link, update_last_crawled_link
@@ -26,7 +26,22 @@ VIEWS_PATTERN = re.compile(r"^\d{1,3}(?:,\d{3})*$")
 # -----------------------------
 session = requests.Session()
 session.headers.update(HEADERS)
-DEFAULT_TIMEOUT = (10, 20)  # (connect, read)
+
+# urllib3 v2 기준: allowed_methods 는 set/frozenset 권장
+retry = Retry(
+    total=3,
+    backoff_factor=0.5,
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods={"GET"},
+)
+adapter = HTTPAdapter(max_retries=retry)
+session.mount("http://", adapter)
+session.mount("https://", adapter)
+
+DEFAULT_TIMEOUT = (10, 10)  # (connect, read)
+
+DETAIL_WORKERS = int(os.getenv("DETAIL_WORKERS", "3"))  # 기본값 3
+DETAIL_TIMEOUT = float(os.getenv("DETAIL_TIMEOUT", "10.0"))  # 각 상세 요청 한도(초)
 
 
 def _find_specific_region(title: str, content: str) -> Optional[str]:
@@ -43,6 +58,7 @@ def _parse_detail_page(url: str) -> str:
     try:
         res = session.get(url, timeout=DEFAULT_TIMEOUT)
         res.raise_for_status()
+        # 인코딩 자동 감지 반영
         res.encoding = res.apparent_encoding
         soup = BeautifulSoup(res.text, "lxml")
 
@@ -55,6 +71,7 @@ def _parse_detail_page(url: str) -> str:
         for c in content_el.find_all(string=lambda t: isinstance(t, Comment)):
             c.extract()
 
+        # 개행 구분자로 '\n'을 명시적으로 사용 (문자열 리터럴 개행 오타 수정)
         text = content_el.get_text("\n").strip()
         # 모든 공백류를 단일 공백으로
         text = re.sub(r"\s+", " ", text).strip()
@@ -74,9 +91,7 @@ def _safe_int_from_views(raw: str) -> int:
     return int(s) if s.isdigit() else 0
 
 
-def _extract_posts_from_list_page(
-        page: int, base_url: str, category_name: str
-) -> List[Dict]:
+def _extract_posts_from_list_page(page: int, base_url: str, category_name: str) -> List[Dict]:
     """목록 페이지에서 게시글 정보(제목/링크/부서/날짜/조회수/첨부)를 수집."""
     url = f"{base_url}{page}"
     try:
@@ -167,8 +182,17 @@ def _extract_posts_from_list_page(
 
     # 상세 본문 병렬 수집
     if links_to_fetch:
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            contents = list(executor.map(_parse_detail_page, links_to_fetch))
+        contents = [""] * len(links_to_fetch)
+        with ThreadPoolExecutor(max_workers=DETAIL_WORKERS) as ex:
+            future_to_idx = {ex.submit(_parse_detail_page, url): i for i, url in enumerate(links_to_fetch)}
+            # as_completed에 전체 타임아웃을 주면 일부 미완료 Future에서 TimeoutError가 발생해
+            # 남은 작업을 수집하지 못할 수 있음 → per-future timeout만 사용
+            for fut in as_completed(future_to_idx):
+                i = future_to_idx[fut]
+                try:
+                    contents[i] = fut.result(timeout=DETAIL_TIMEOUT)
+                except Exception as e:
+                    logging.warning(f"[detail] timeout/err on {links_to_fetch[i]}: {e}")
 
         for i, content in enumerate(contents):
             posts_on_page[i]["content"] = content
