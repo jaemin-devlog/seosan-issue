@@ -31,7 +31,7 @@ public class CacheConfig {
     }
 
     // 본문/요약 : Redis 공유 캐시
-    @Primary // ✅ 기본 CacheManager로 지정
+    @Primary
     @Bean(name = "redisCacheManager")
     public CacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
@@ -40,8 +40,9 @@ public class CacheConfig {
                 .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> configs = new HashMap<>();
-        configs.put("content", defaultConfig.entryTtl(Duration.ofHours(6))); // 외부 본문
-        configs.put("summary", defaultConfig.entryTtl(Duration.ofHours(2))); // 요약 결과
+        configs.put("content", defaultConfig.entryTtl(Duration.ofHours(6)));   // 외부 본문
+        configs.put("summary", defaultConfig.entryTtl(Duration.ofHours(2)));   // 최종 요약
+        configs.put("perdoc", defaultConfig.entryTtl(Duration.ofHours(24)));   // ✅ 문서별 요약 (24h)
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
