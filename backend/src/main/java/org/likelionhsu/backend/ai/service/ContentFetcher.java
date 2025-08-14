@@ -1,16 +1,14 @@
 package org.likelionhsu.backend.ai.service;
 
-import net.dankito.readability4j.Readability4J; // ✅ Readability4J 사용
+import net.dankito.readability4j.Readability4J;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.likelionhsu.backend.ai.dto.ArticleText;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ContentFetcher {
-
-    // 다른 클래스에서 import 하려면: import org.likelionhsu.backend.ai.service.ContentFetcher.ArticleText;
-    public record ArticleText(String url, String title, String byline, String text) {}
 
     @Cacheable(cacheNames = "content", cacheManager = "redisCacheManager", key = "#url",
             unless = "#result == null || #result.text() == null || #result.text().isBlank()")
@@ -24,7 +22,12 @@ public class ContentFetcher {
             var readability = new Readability4J(url, doc.outerHtml());
             var article = readability.parse();
 
-            return new ArticleText(url, article.getTitle(), article.getByline(), article.getTextContent());
+            return new ArticleText(
+                    url,
+                    article.getTitle(),
+                    article.getByline(),
+                    article.getTextContent()
+            );
         } catch (Exception e) {
             return null; // 실패 시 캐시 X
         }
