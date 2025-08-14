@@ -167,7 +167,7 @@ def _extract_posts_from_list_page(
 
     # 상세 본문 병렬 수집
     if links_to_fetch:
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             contents = list(executor.map(_parse_detail_page, links_to_fetch))
 
         for i, content in enumerate(contents):
