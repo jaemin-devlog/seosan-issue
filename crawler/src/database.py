@@ -106,7 +106,7 @@ def init_db():
               `region` VARCHAR(255) NOT NULL,
               `title` VARCHAR(255) NOT NULL,
               PRIMARY KEY (`id`),
-              UNIQUE KEY `UK_post_link` (`link`),
+              UNIQUE KEY `UK_post_link` (`link`(191)),
               KEY `IDX_post_crawled_at` (`crawled_at`),
               KEY `IDX_post_category` (`category`),
               KEY `IDX_post_region` (`region`)
@@ -163,6 +163,18 @@ def _infer_region_from_category(category_name: str) -> str | None:
             return r
     return None
 
+from urllib.parse import urlsplit, urlunsplit
+
+def _sanitize_link(raw: str | None) -> str | None:
+    if not raw:
+        return raw
+    # 공백/컨트롤 제거
+    link = raw.strip()
+    # 스키마 누락 보정 등 추가 처리 필요 시 여기에
+    # 길이 트리밍 (DB 칼럼 1024와 일치)
+    if len(link) > 1024:
+        link = link[:1024]
+    return link
 
 def save_to_db(items: list[dict], category_name: str):
     """
@@ -208,10 +220,11 @@ def save_to_db(items: list[dict], category_name: str):
         if not specific_region:
             specific_region = inferred_region_from_cat or "서산시 전체"
 
+        link = _sanitize_link(it.get("link"))
         params.append((
             it.get("title"),
             it.get("content"),
-            it.get("link"),
+            link,
             it.get("date"),
             specific_region,
             category_enum,
