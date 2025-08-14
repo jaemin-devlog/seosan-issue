@@ -29,12 +29,4 @@ ENV TOKENIZERS_PARALLELISM=false \
 EXPOSE 5001
 
 # Gunicorn 실행: gthread 워커, 타임아웃/재시작 전략, tmp-dir
-CMD ["sh","-c", "\
-  gunicorn api:app \
-    -w 2 \
-    -k gthread --threads 8 \
-    --bind 0.0.0.0:${PORT:-5001} \
-    --timeout 120 --graceful-timeout 30 \
-    --max-requests 200 --max-requests-jitter 50 \
-    --worker-tmp-dir /dev/shm \
-"]
+CMD ["sh","-c","gunicorn --workers 4 --timeout 300 --bind 0.0.0.0:${PORT:-5001} api:app"]
