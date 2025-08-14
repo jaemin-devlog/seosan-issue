@@ -16,9 +16,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -77,8 +75,9 @@ public class NaverSearchService {
             key = "#type + '::' + #query + '::' + #display",
             unless = "#result == null || #result.isEmpty()")
     public List<NaverSearchItemDto> search(String type, String query, int display) {
-        // ✅ URLEncoder로 미리 인코딩하지 말고, UriComponentsBuilder가 처리하게 두는 게 안전합니다.
-        URI uri = UriComponentsBuilder.fromHttpUrl(BASE + "/" + type + ".json")
+        // ✅ UriComponentsBuilder가 인코딩하도록 맡기는 걸 권장
+        var uri = UriComponentsBuilder
+                .fromHttpUrl(BASE + "/" + type + ".json")
                 .queryParam("query", query)
                 .queryParam("display", display)
                 .queryParam("start", 1)
@@ -87,16 +86,16 @@ public class NaverSearchService {
                 .build()
                 .toUri();
 
-        HttpHeaders headers = new HttpHeaders();
+        var headers = new HttpHeaders();
         headers.set("X-Naver-Client-Id", clientId);
         headers.set("X-Naver-Client-Secret", clientSecret);
 
-        ResponseEntity<String> res =
-                restTemplate.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+        var res = restTemplate.exchange(uri, HttpMethod.GET,
+                new HttpEntity<>(headers), String.class);
 
-        List<NaverSearchItemDto> list = new ArrayList<>();
+        var list = new java.util.ArrayList<NaverSearchItemDto>();
         try {
-            JsonNode root = objectMapper.readTree(res.getBody());
+            var root = objectMapper.readTree(res.getBody());
             for (JsonNode item : root.path("items")) {
                 list.add(new NaverSearchItemDto(
                         item.path("title").asText(),
