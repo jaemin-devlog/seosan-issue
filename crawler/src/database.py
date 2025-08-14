@@ -1,175 +1,295 @@
 # -*- coding: utf-8 -*-
+import os
+import time
+import datetime
+import logging
 import mysql.connector
 from mysql.connector import errorcode
-import datetime
-import os
-import logging
-import time
+from mysql.connector.pooling import MySQLConnectionPool
+from contextlib import contextmanager
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# ---------------------------------------
+# 로깅
+# ---------------------------------------
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# MySQL 연결 설정 (환경 변수 사용)
-db_config = {
-    'host': os.environ.get('DB_HOST', 'localhost'),
-    'user': 'root',
-    'password': os.environ.get('DB_PASSWORD'),
-    'database': os.environ.get('DB_NAME', 'seosan_issue_db')
+# ---------------------------------------
+# DB 설정 (환경변수 우선)
+# ---------------------------------------
+DB_CONFIG = {
+    "host": os.environ.get("DB_HOST", "localhost"),
+    "user": os.environ.get("DB_USER", "root"),
+    "password": os.environ.get("DB_PASSWORD"),
+    "database": os.environ.get("DB_NAME", "seosan_issue_db"),
+    "charset": "utf8mb4",
+    # mysql-connector는 collation 파라미터를 직접 받지 않으므로
+    # 테이블/칼럼 단에서 COLLATE 지정으로 일관성 유지.
 }
 
-def get_db_connection(max_retries=5, retry_delay=5):
-    """MySQL 데이터베이스 연결을 생성하고 반환합니다. 재시도 로직 포함."""
+POOL: MySQLConnectionPool | None = None
+
+
+def _build_pool(pool_size: int = 5) -> None:
+    """글로벌 커넥션 풀 초기화."""
+    global POOL
+    if POOL is None:
+        POOL = MySQLConnectionPool(pool_name="seosan_pool", pool_size=pool_size, **DB_CONFIG)
+        logging.info(f"MySQL 커넥션 풀 생성 완료 (size={pool_size})")
+
+
+def get_db_connection(max_retries: int = 5, retry_delay: int = 5):
+    """풀에서 커넥션을 얻는다. 실패 시 재시도."""
+    _build_pool()
+    assert POOL is not None
     for i in range(max_retries):
         try:
-            conn = mysql.connector.connect(**db_config, charset='utf8mb4', collation='utf8mb4_unicode_ci')
-            logging.info(f"데이터베이스 연결 성공 (시도 {i+1}/{max_retries})")
+            conn = POOL.get_connection()
+            logging.debug(f"DB 커넥션 획득 성공 (시도 {i+1}/{max_retries})")
             return conn
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-                logging.error("MySQL 접근 권한이 없습니다. 사용자 이름과 비밀번호를 확인하세요.", exc_info=True)
-                return None # 접근 거부는 재시도해도 소용없으므로 즉시 종료
+                logging.error("MySQL 접근 권한 오류: 사용자/비밀번호 확인 필요.", exc_info=True)
+                return None
             elif err.errno == errorcode.ER_BAD_DB_ERROR:
-                logging.error(f"데이터베이스 '{db_config['database']}'가 존재하지 않습니다.", exc_info=True)
-                return None # 잘못된 DB 이름은 재시도해도 소용없으므로 즉시 종료
+                logging.error(f"데이터베이스 '{DB_CONFIG['database']}'가 존재하지 않습니다.", exc_info=True)
+                return None
             else:
-                logging.warning(f"데이터베이스 연결 중 오류 발생 (시도 {i+1}/{max_retries}): {err}")
+                logging.warning(f"DB 커넥션 오류 (시도 {i+1}/{max_retries}): {err}")
                 if i < max_retries - 1:
-                    logging.info(f"재시도 {retry_delay}초 후 다시 시도합니다...")
                     time.sleep(retry_delay)
                 else:
-                    logging.error(f"최대 재시도 횟수({max_retries}) 초과. 데이터베이스 연결 실패.", exc_info=True)
+                    logging.error(f"최대 재시도 초과. DB 연결 실패.", exc_info=True)
                     return None
     return None
 
-def init_db():
-    """데이터베이스와 최종 스키마의 테이블을 초기화합니다."""
+
+@contextmanager
+def db_cursor(dict_cursor: bool = False):
+    """with 블록으로 conn/cursor 자동 정리."""
     conn = get_db_connection()
     if not conn:
+        yield None, None
         return
-        
-    cursor = conn.cursor()
-    
-    # 최종 post 테이블 스키마 (emotion, welfare_category 제거)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS `post` (
-          `id` bigint NOT NULL AUTO_INCREMENT,
-          `crawled_at` datetime NOT NULL,
-          `pub_date` varchar(255) NOT NULL,
-          `views` int DEFAULT NULL,
-          `category` varchar(255) NOT NULL,
-          `content` text NOT NULL,
-          `department` varchar(255) DEFAULT NULL,
-          `link` varchar(255) NOT NULL,
-          `region` varchar(255) NOT NULL,
-          `title` varchar(255) NOT NULL,
-          PRIMARY KEY (`id`),
-          UNIQUE KEY `UK_post_link` (`link`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    """)
+    cursor = None
+    try:
+        cursor = conn.cursor(dictionary=dict_cursor)
+        yield conn, cursor
+        conn.commit()
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.error(f"DB 작업 중 오류: {e}", exc_info=True)
+        raise
+    finally:
+        if cursor:
+            cursor.close()
+        conn.close()
 
-    # last_crawled_info 테이블 생성 (크롤링 상태 관리)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS `last_crawled_info` (
-            `category_name` VARCHAR(255) PRIMARY KEY,
-            `last_crawled_link` VARCHAR(255),
-            `last_crawled_at` DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
 
-    logging.info(f"데이터베이스 '{db_config['database']}' 초기화 및 테이블 생성/업데이트 완료.")
-    cursor.close()
-    conn.close()
+def init_db():
+    """스키마 초기화: 테이블 생성 및 인덱스 보강."""
+    with db_cursor() as (conn, cur):
+        if not cur:
+            return
 
-def map_category(category_name):
-    """크롤링 카테고리 이름을 백엔드 Category Enum 값으로 매핑합니다."""
-    # crawler_config.py와 일치하도록 키 값을 수정 ('/' -> '-')
+        # post: link 길이 1024로 확장, 인덱스 보강
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS `post` (
+              `id` BIGINT NOT NULL AUTO_INCREMENT,
+              `crawled_at` DATETIME NOT NULL,
+              `pub_date` VARCHAR(64) NOT NULL,
+              `views` INT DEFAULT 0,
+              `category` VARCHAR(255) NOT NULL,
+              `content` MEDIUMTEXT NOT NULL,
+              `department` VARCHAR(255) DEFAULT NULL,
+              `link` VARCHAR(1024) NOT NULL,
+              `region` VARCHAR(255) NOT NULL,
+              `title` VARCHAR(255) NOT NULL,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `UK_post_link` (`link`(191)),
+              KEY `IDX_post_crawled_at` (`crawled_at`),
+              KEY `IDX_post_category` (`category`),
+              KEY `IDX_post_region` (`region`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        """)
+
+        # 크롤링 진행상태 테이블
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS `last_crawled_info` (
+                `category_name` VARCHAR(255) PRIMARY KEY,
+                `last_crawled_link` VARCHAR(1024),
+                `last_crawled_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        """)
+
+        logging.info(f"DB 초기화 완료 (database='{DB_CONFIG['database']}').")
+
+
+# ---------------------------------------
+# 카테고리 매핑
+# ---------------------------------------
+def map_category(category_name: str) -> str:
+    """크롤링 카테고리명 → 백엔드 Enum 매핑."""
     mapping = {
         "복지정보-어르신": "WELFARE_SENIOR",
         "복지정보-장애인": "WELFARE_DISABLED",
         "복지정보-여성가족": "WELFARE_WOMEN_FAMILY",
         "복지정보-아동청소년": "WELFARE_CHILD_YOUTH",
         "복지정보-청년": "WELFARE_YOUTH",
-        "보건-건강": "HEALTH_WELLNESS",
+        "보건/건강": "HEALTH_WELLNESS",
         "공지사항": "NOTICE",
         "보도자료": "PRESS_RELEASE",
         "문화소식": "CULTURE_NEWS",
         "시티투어": "CITY_TOUR",
-        "관광-안내": "TOUR_GUIDE"
+        "관광-안내": "TOUR_GUIDE",
     }
+    # 읍면동 공지사항은 모두 NOTICE로 귀속
+    if category_name.endswith(" 공지사항"):
+        return "NOTICE"
     return mapping.get(category_name, "UNKNOWN")
 
-def save_to_db(data, category_name):
-    """크롤링한 데이터를 최종 스키마에 맞게 MySQL에 저장합니다."""
-    conn = get_db_connection()
-    if not conn:
+
+# 미리 가져와서 루프 중 import 비용 제거
+try:
+    from src.regions import REGIONS
+except Exception:
+    REGIONS = []
+
+
+def _infer_region_from_category(category_name: str) -> str | None:
+    """카테고리명에서 지역 추론: '해미면 공지사항' → '해미면'."""
+    for r in REGIONS:
+        if category_name.startswith(r + " "):
+            return r
+    return None
+
+from urllib.parse import urlsplit, urlunsplit
+
+def _sanitize_link(raw: str | None) -> str | None:
+    if not raw:
+        return raw
+    # 공백/컨트롤 제거
+    link = raw.strip()
+    # 스키마 누락 보정 등 추가 처리 필요 시 여기에
+    # 길이 트리밍 (DB 칼럼 1024와 일치)
+    if len(link) > 1024:
+        link = link[:1024]
+    return link
+
+def save_to_db(items: list[dict], category_name: str):
+    """
+    크롤링한 게시글 목록 저장.
+    - link UNIQUE 기준으로 UPSERT
+    - views/department 등은 중복 시 업데이트
+    """
+    if not items:
+        logging.info(f"저장할 항목이 없습니다. (카테고리: {category_name})")
         return
 
-    cursor = conn.cursor()
-    new_posts_count = 0
     category_enum = map_category(category_name)
+    inferred_region_from_cat = _infer_region_from_category(category_name)
 
-    for item in data:
+    # INSERT ... ON DUPLICATE KEY UPDATE
+    insert_sql = """
+        INSERT INTO post
+            (title, content, link, pub_date, region, category, department, views, crawled_at)
+        VALUES
+            (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            title = VALUES(title),
+            content = VALUES(content),
+            pub_date = VALUES(pub_date),
+            region = VALUES(region),
+            category = VALUES(category),
+            department = VALUES(department),
+            views = GREATEST(views, VALUES(views)), -- 기존 값과 새 값 중 큰 값 유지(선택)
+            crawled_at = VALUES(crawled_at)
+    """
+
+    now = datetime.datetime.now()
+    params = []
+
+    for it in items:
+        # 조회수 안전 파싱
         try:
-            views = int(item.get('views', 0))
+            views = int(it.get("views", 0))
         except (ValueError, TypeError):
             views = 0
 
-        # 최종 스키마에 맞는 INSERT 쿼리
-        insert_query = """
-            INSERT INTO post (title, content, link, pub_date, region, category, department, views, crawled_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        post_data = (
-            item.get('title'),
-            item.get('content'),
-            item.get('link'),
-            item.get('date'),
-            '서산시 전체',
+        specific_region = it.get("specific_region")
+        if not specific_region:
+            specific_region = inferred_region_from_cat or "서산시 전체"
+
+        link = _sanitize_link(it.get("link"))
+        params.append((
+            it.get("title"),
+            it.get("content"),
+            link,
+            it.get("date"),
+            specific_region,
             category_enum,
-            item.get('department'),
+            it.get("department"),
             views,
-            datetime.datetime.now()
-        )
-        
+            now,
+        ))
+
+    with db_cursor() as (conn, cur):
+        if not cur:
+            return
         try:
-            cursor.execute(insert_query, post_data)
-            new_posts_count += 1
+            cur.executemany(insert_sql, params)
+            inserted = cur.rowcount  # UPSERT라 정확히 "신규 개수"는 아님(업데이트 포함)
+            logging.info(f"{len(items)}건 처리 완료(신규+업데이트 포함). (카테고리: {category_name})")
         except mysql.connector.Error as err:
-            if err.errno == errorcode.ER_DUP_ENTRY:
-                logging.debug(f"중복 링크 발견, 건너뛰기: {item.get('link')}")
-            else:
-                logging.error(f"데이터 삽입 중 오류 발생: {err} - {item.get('link')}", exc_info=True)
+            logging.error(f"게시글 저장 중 오류: {err}", exc_info=True)
 
-    conn.commit()
-    logging.info(f"{new_posts_count}개의 새로운 게시글을 데이터베이스에 저장 완료. (카테고리: {category_name})")
-    cursor.close()
-    conn.close()
 
-def get_last_crawled_link(category_name):
-    """특정 카테고리의 마지막으로 크롤링된 게시글 링크를 가져옵니다."""
-    conn = get_db_connection()
-    if not conn:
-        return None
-    cursor = conn.cursor()
-    query = "SELECT last_crawled_link FROM last_crawled_info WHERE category_name = %s"
-    cursor.execute(query, (category_name,))
-    result = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    return result[0] if result else None
+def get_last_crawled_link(category_name: str) -> str | None:
+    with db_cursor() as (conn, cur):
+        if not cur:
+            return None
+        cur.execute(
+            "SELECT last_crawled_link FROM last_crawled_info WHERE category_name = %s",
+            (category_name,),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
 
-def update_last_crawled_link(category_name, last_crawled_link):
-    """마지막으로 크롤링된 게시글 링크를 업데이트합니다."""
-    conn = get_db_connection()
-    if not conn:
-        return
-    cursor = conn.cursor()
-    query = """
-        INSERT INTO last_crawled_info (category_name, last_crawled_link, last_crawled_at)
-        VALUES (%s, %s, %s)
-        ON DUPLICATE KEY UPDATE last_crawled_link = VALUES(last_crawled_link), last_crawled_at = VALUES(last_crawled_at)
+
+def update_last_crawled_link(category_name: str, last_crawled_link: str):
+    with db_cursor() as (conn, cur):
+        if not cur:
+            return
+        cur.execute(
+            """
+            INSERT INTO last_crawled_info (category_name, last_crawled_link, last_crawled_at)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                last_crawled_link = VALUES(last_crawled_link),
+                last_crawled_at = VALUES(last_crawled_at)
+            """,
+            (category_name, last_crawled_link, datetime.datetime.now()),
+        )
+
+
+def get_content_statistics() -> dict | None:
     """
-    cursor.execute(query, (category_name, last_crawled_link, datetime.datetime.now()))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    전체/오늘/어제 수집 건수를 반환.
+    """
+    stats = {"total_count": 0, "today_count": 0, "yesterday_count": 0}
+    with db_cursor() as (conn, cur):
+        if not cur:
+            return None
+        try:
+            cur.execute("SELECT COUNT(*) FROM post;")
+            stats["total_count"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(*) FROM post WHERE DATE(crawled_at) = CURDATE();")
+            stats["today_count"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(*) FROM post WHERE DATE(crawled_at) = CURDATE() - INTERVAL 1 DAY;")
+            stats["yesterday_count"] = cur.fetchone()[0]
+        except Exception as e:
+            logging.error(f"통계 조회 오류: {e}", exc_info=True)
+            return None
+    return stats

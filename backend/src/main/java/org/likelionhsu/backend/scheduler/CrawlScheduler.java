@@ -1,6 +1,6 @@
 package org.likelionhsu.backend.scheduler;
 
-import org.likelionhsu.backend.flask.FlaskController;
+import org.likelionhsu.backend.flask.controller.FlaskController;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +15,6 @@ public class CrawlScheduler {
 
     @Scheduled(fixedRate = 10800000) // 3시간마다 실행 (밀리초 단위)
     public void scheduleCrawlAll() {
-        flaskController.crawlAll();
+        flaskController.crawlAll(2);
     }
 }
