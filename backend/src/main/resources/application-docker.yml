@@ -7,6 +7,10 @@ spring:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
+
+flask:
+  server:
+    url: http://crawler:5001
 crawler:
   api:
     url: http://crawler:5001
