@@ -42,7 +42,7 @@ public class WeatherService {
                 .findFirst()
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT_VALUE, "지원하지 않는 지역: " + region));
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Seoul")).toLocalDateTime();
 
         // 1) 실황: 관측값(기온/습도/풍속/풍향/PTY)
         String baseDateNcst = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
