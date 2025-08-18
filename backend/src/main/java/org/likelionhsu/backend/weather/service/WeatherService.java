@@ -8,11 +8,11 @@ import org.likelionhsu.backend.common.config.KmaApiConfig;
 import org.likelionhsu.backend.common.config.KmaApiConfig.RegionCoordinate;
 import org.likelionhsu.backend.common.exception.CustomException;
 import org.likelionhsu.backend.common.exception.ErrorCode;
-import org.likelionhsu.backend.weather.dto.WeatherResponseDto;
+import org.likelionhsu.backend.weather.dto.WeatherCardDto;
+import org.likelionhsu.backend.weather.dto.WeatherCardsResponse;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -21,8 +21,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,47 +34,80 @@ public class WeatherService {
     private final ObjectMapper objectMapper;
     private final KmaApiConfig kmaApiConfig;
 
-    private static final String NCST_PATH = "getUltraSrtNcst";  // 초단기실황
-    private static final String FCST_PATH = "getUltraSrtFcst";  // 초단기예보
+    // KMA 엔드포인트(베이스 URL은 KmaApiConfig에 설정)
+    private static final String NCST_PATH = "getUltraSrtNcst";  // 초단기실황 (관측)
+    private static final String FCST_PATH = "getUltraSrtFcst";  // 초단기예보 (SKY/PTY)
 
-    public WeatherResponseDto getWeather(String region) {
-        KmaApiConfig.RegionCoordinate coord = kmaApiConfig.getGridCoords().stream()
-                .filter(c -> c.getName().equals(region))
-                .findFirst()
-                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT_VALUE, "지원하지 않는 지역: " + region));
+    /** 카드형 날씨: city는 메타로만 사용, gridCoords 전체를 순회해 카드 생성 */
+    public WeatherCardsResponse getCardsByCity(String city) {
+        var coords = Optional.ofNullable(kmaApiConfig.getGridCoords())
+                .filter(list -> !list.isEmpty())
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT_VALUE, "grid-coords가 비어 있습니다."));
 
         LocalDateTime now = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Seoul")).toLocalDateTime();
-
-        // 1) 실황: 관측값(기온/습도/풍속/풍향/PTY)
         String baseDateNcst = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String baseTimeNcst = ncstBaseTime(now);
-        Map<String, String> obs = callKma(NCST_PATH, baseDateNcst, baseTimeNcst, coord.getNx(), coord.getNy(), true);
 
-        // 2) 예보: SKY/PTY 보강(가장 최근 fcstTime)
+        var pool = Executors.newFixedThreadPool(Math.min(6, coords.size()));
+        try {
+            var futures = coords.stream()
+                    .map(rc -> CompletableFuture.supplyAsync(
+                            () -> buildCard(rc.getName(), baseDateNcst, baseTimeNcst), pool))
+                    .toList();
+
+            List<WeatherCardDto> cards = futures.stream()
+                    .map(CompletableFuture::join)
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            return WeatherCardsResponse.builder()
+                    .city(city)                 // 전달받은 city 그대로 표기
+                    .baseDate(baseDateNcst)    // 실황 기준
+                    .baseTime(baseTimeNcst)
+                    .cards(cards)
+                    .build();
+        } finally {
+            pool.shutdown();
+        }
+    }
+
+    /** 카드 한 장 생성 (실황 + 최신 SKY/PTY → Figma 4종으로 축약) */
+    private WeatherCardDto buildCard(String region, String baseDateNcst, String baseTimeNcst) {
+        RegionCoordinate coord = kmaApiConfig.getGridCoords().stream()
+                .filter(c -> c.getName().equals(region))
+                .findFirst()
+                .orElse(null);
+        if (coord == null) return null;
+
+        // 1) 초단기실황(관측)
+        Map<String, String> obs = callKma(NCST_PATH, baseDateNcst, baseTimeNcst, coord.getNx(), coord.getNy(), true);
+        Double t1h = parseDouble(obs.get("T1H"));
+        Double reh = parseDouble(obs.get("REH"));
+        Double wsd = parseDouble(obs.get("WSD"));
+        String windText = windDirToText(obs.getOrDefault("VEC", null)); // "남서"
+        if (windText != null && !windText.endsWith("풍")) windText += "풍"; // "남서풍"
+
+        // 2) 초단기예보(가장 최신 SKY/PTY)
+        LocalDateTime now = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Seoul")).toLocalDateTime();
         String baseDateFcst = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String baseTimeFcst = fcstBaseTime(now);
         Map<String, String> fcst = callKma(FCST_PATH, baseDateFcst, baseTimeFcst, coord.getNx(), coord.getNy(), false);
 
-        String sky = fcst.getOrDefault("SKY", "N/A");
-        String pty = fcst.getOrDefault("PTY", obs.getOrDefault("PTY", "N/A"));
+        String sky = fcst.get("SKY");
+        String pty = fcst.getOrDefault("PTY", obs.get("PTY")); // 예보 비어있으면 실황 PTY 보조
+        String condition = resolveCondition(pty, sky); // "맑음/흐림/비/눈"
 
-        String windText = windDirToText(obs.getOrDefault("VEC", null));
-
-        return WeatherResponseDto.builder()
-                .baseDate(baseDateNcst)
-                .baseTime(baseTimeNcst)
+        return WeatherCardDto.builder()
                 .region(region)
-                .temperature(obs.getOrDefault("T1H", "N/A"))
-                .humidity(obs.getOrDefault("REH", "N/A"))
-                .sky(sky)
-                .pty(pty)
-                .skyDescription(describe(sky, pty))
-                .windSpeed(obs.getOrDefault("WSD", "N/A"))
-                .windDirection(windText == null ? obs.getOrDefault("VEC", "N/A") : windText)
+                .temperature(t1h)
+                .humidity(reh)
+                .windSpeed(wsd)
+                .windDirection(windText)
+                .condition(condition)
                 .build();
     }
 
-    // ----- Helpers -----
+    // ====== 공통 유틸 ======
 
     /** 실황 base_time: 매시 정각, 10분 이후 제공 → 10분 전이면 이전 시각 00 */
     private String ncstBaseTime(LocalDateTime now) {
@@ -91,7 +125,9 @@ public class WeatherService {
     }
 
     /**
-     * 공통 호출: isNcst=true → obsrValue, false → fcstValue(SKY/PTY 최신 fcstTime만)
+     * KMA 공통 호출
+     * isNcst=true  → obsrValue (실황)
+     * isNcst=false → fcstValue (예보: 최신 fcstDate+fcstTime 중 SKY/PTY만 추출)
      */
     private Map<String, String> callKma(String path, String baseDate, String baseTime,
                                         int nx, int ny, boolean isNcst) {
@@ -104,7 +140,7 @@ public class WeatherService {
                 .queryParam("base_time", baseTime)
                 .queryParam("nx", nx)
                 .queryParam("ny", ny)
-                .build(true) // 이미 인코딩된 키 사용
+                .build(true)
                 .toUri();
 
         HttpHeaders headers = new HttpHeaders();
@@ -112,8 +148,11 @@ public class WeatherService {
         ResponseEntity<String> res = restTemplate.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), String.class);
 
         JsonNode root;
-        try { root = objectMapper.readTree(res.getBody()); }
-        catch (Exception e) { throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "KMA 응답 파싱 실패"); }
+        try {
+            root = objectMapper.readTree(res.getBody());
+        } catch (Exception e) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "KMA 응답 파싱 실패");
+        }
 
         String code = root.path("response").path("header").path("resultCode").asText();
         if (!"00".equals(code)) {
@@ -125,14 +164,12 @@ public class WeatherService {
         Map<String, String> out = new HashMap<>();
 
         if (isNcst) {
-            // 관측값 전부 맵핑
             for (JsonNode it : items) {
                 out.put(it.path("category").asText(), it.path("obsrValue").asText());
             }
             return out;
         }
 
-        // 예보: 가장 최신 fcstDate+fcstTime 구하기
         String latestDt = "";
         for (JsonNode it : items) {
             String dt = it.path("fcstDate").asText() + it.path("fcstTime").asText();
@@ -148,26 +185,20 @@ public class WeatherService {
         return out;
     }
 
-    /** PTY 우선 → SKY 보조 */
-    private String describe(String skyCode, String ptyCode) {
-        switch (ptyCode) {
-            case "1": return "비";
-            case "2": return "비/눈";
-            case "3": return "눈";
-            case "4": return "소나기";
-            case "5": return "빗방울";
-            case "6": return "빗방울·눈날림";
-            case "7": return "눈날림";
+    /** PTY 우선 → SKY 보조 (Figma 4종으로 축약) */
+    private static String resolveCondition(String pty, String sky) {
+        if (pty != null && !"0".equals(pty)) {
+            return switch (pty) {
+                case "1", "4", "5", "6" -> "비";   // 비/소나기/빗방울
+                case "2", "3", "7" -> "눈";       // 비눈/눈/눈날림
+                default -> "비";
+            };
         }
-        switch (skyCode) {
-            case "1": return "맑음";
-            case "3": return "구름많음";
-            case "4": return "흐림";
-            default:  return "정보 없음";
-        }
+        if ("1".equals(sky)) return "맑음";
+        return "흐림"; // SKY=3,4 나머지는 전부 흐림 처리
     }
 
-    /** 풍향각(0~360) → 16방위 텍스트 */
+    /** 풍향각(0~360) → 16방위 텍스트(한글 두 글자) */
     private String windDirToText(String vec) {
         if (vec == null) return null;
         try {
@@ -175,6 +206,13 @@ public class WeatherService {
             String[] dirs = {"북","북북동","북동","동북동","동","동남동","남동","남남동","남","남남서","남서","서남서","서","서북서","북서","북북서"};
             int idx = (int)Math.round(((deg % 360) / 22.5)) % 16;
             return dirs[idx];
-        } catch (NumberFormatException e) { return null; }
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Double parseDouble(String s) {
+        if (s == null || s.isBlank() || "N/A".equalsIgnoreCase(s)) return null;
+        try { return Double.parseDouble(s); } catch (Exception e) { return null; }
     }
 }
