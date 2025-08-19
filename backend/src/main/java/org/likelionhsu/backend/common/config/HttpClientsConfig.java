@@ -20,6 +20,9 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class HttpClientsConfig {
 
+    /**
+     * 요청/응답 타이밍 로깅 필터
+     */
     private static ExchangeFilterFunction timing(String tag) {
         return (request, next) -> {
             long t0 = System.nanoTime();
@@ -45,15 +48,19 @@ public class HttpClientsConfig {
         };
     }
 
-
-
+    /**
+     * 큰 응답(최대 8MB) 허용
+     */
     private static ExchangeStrategies strategies(int mb) {
         return ExchangeStrategies.builder()
                 .codecs(c -> c.defaultCodecs().maxInMemorySize(mb * 1024 * 1024))
                 .build();
     }
 
-    @Bean("flaskWebClient") // 300s 체인
+    /**
+     * Flask 모델 서버 호출용 WebClient (300s)
+     */
+    @Bean("flaskWebClient")
     public WebClient flaskWebClient(
             WebClient.Builder builder,
             @Value("${crawler.api.url:http://crawler:5001}") String baseUrl
@@ -74,7 +81,10 @@ public class HttpClientsConfig {
                 .build();
     }
 
-    @Bean("externalWebClient") // 90s 체인
+    /**
+     * 외부 API (NAVER, KMA 등) 호출용 WebClient (90s)
+     */
+    @Bean("externalWebClient")
     public WebClient externalWebClient(WebClient.Builder builder) {
         HttpClient http = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10_000)
@@ -89,4 +99,3 @@ public class HttpClientsConfig {
                 .build();
     }
 }
-
