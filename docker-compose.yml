@@ -12,7 +12,7 @@ services:
     volumes:
       - db-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$DB_PASSWORD"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$DB_PASSWORD"]
       interval: 5s
       timeout: 20s
       retries: 10
@@ -50,8 +50,6 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: seosan-backend-app
-    ports:
-      - "8083:8083"
     depends_on:
       db:
         condition: service_healthy
@@ -65,6 +63,26 @@ services:
     environment:
       PORT: 8083
       SPRING_PROFILES_ACTIVE: docker
+
+  nginx:
+    image: nginx:latest
+    container_name: seosan-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - backend
+
+  certbot:
+    image: certbot/certbot
+    container_name: seosan-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
 
 volumes:
   db-data:
