@@ -1,57 +1,67 @@
-
-// src/main/java/.../flask/service/FlaskService.java
+// src/main/java/org/likelionhsu/backend/flask/service/FlaskService.java
 package org.likelionhsu.backend.flask.service;
 
-import org.likelionhsu.backend.common.config.FlaskClientConfig;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.backend.flask.dto.request.SummarizeRequest;
 import org.likelionhsu.backend.flask.dto.response.SummarizeResponse;
-import org.slf4j.Logger; import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Duration;
+import java.util.Map;
+
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class FlaskService {
-    private static final Logger log = LoggerFactory.getLogger(FlaskService.class);
 
-    private final RestTemplate restTemplate;
-    private final FlaskClientConfig cfg;
-
-    public FlaskService(RestTemplate restTemplate, FlaskClientConfig cfg) {
-        this.restTemplate = restTemplate;
-        this.cfg = cfg;
-    }
+    @Qualifier("flaskWebClient")
+    private final WebClient flask;
 
     public ResponseEntity<?> crawlAll(Integer pages) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(cfg.getUrl() + "/crawl_all");
-
-        if (pages != null) {
-            builder.queryParam("pages", pages);
-        }
-
-        String url = builder.build(true).toUriString();
-        log.info("GET {}", url);
-        return restTemplate.getForEntity(url, Object.class);
-    }
-
-    public ResponseEntity<?> contentStats() {
-        var url = cfg.getUrl() + "/content_stats";
-        log.info("GET {}", url);
-        return restTemplate.getForEntity(url, Object.class);
+        var body = flask.get()
+                .uri(uriBuilder -> uriBuilder.path("/crawl_all")
+                        .queryParamIfPresent("pages", pages == null ? java.util.Optional.empty() : java.util.Optional.of(pages))
+                        .build())
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .timeout(Duration.ofSeconds(305))   // 호출부 가드
+                .block();
+        return ResponseEntity.ok(body);
     }
 
     public ResponseEntity<?> popularTerms() {
-        var url = cfg.getUrl() + "/crawl_popular_terms";
-        log.info("GET {}", url);
-        return restTemplate.getForEntity(url, Object.class);
+        var body = flask.get()
+                .uri("/crawl_popular_terms")
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .timeout(Duration.ofSeconds(305))
+                .block();
+        return ResponseEntity.ok(body);
     }
 
-    public ResponseEntity<SummarizeResponse> summarize(SummarizeRequest request) {
-        var url = cfg.getUrl() + "/summarize";
-        log.info("POST {}", url);
-        return restTemplate.postForEntity(url, request, SummarizeResponse.class);
+    public ResponseEntity<?> contentStats() {
+        var body = flask.get()
+                .uri("/content_stats")
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .timeout(Duration.ofSeconds(305))
+                .block();
+        return ResponseEntity.ok(body);
     }
 
-    
+    public ResponseEntity<SummarizeResponse> summarize(SummarizeRequest req) {
+        var res = flask.post()
+                .uri("/summarize")
+                .bodyValue(req)
+                .retrieve()
+                .bodyToMono(SummarizeResponse.class)
+                .timeout(Duration.ofSeconds(305))
+                .block();
+        return ResponseEntity.ok(res);
+    }
 }
