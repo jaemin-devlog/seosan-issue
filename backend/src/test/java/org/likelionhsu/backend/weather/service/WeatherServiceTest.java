@@ -1,213 +1,125 @@
-//package org.likelionhsu.backend.weather.service;
-//
-//import com.fasterxml.jackson.databind.JsonNode;
-//import com.fasterxml.jackson.databind.ObjectMapper;
-//import org.junit.jupiter.api.BeforeEach;
-//import org.junit.jupiter.api.DisplayName;
-//import org.junit.jupiter.api.Test;
-//import org.junit.jupiter.api.extension.ExtendWith;
-//import org.likelionhsu.backend.common.config.KmaApiConfig;
-//import org.likelionhsu.backend.common.config.KmaApiConfig.RegionCoordinate;
-//import org.likelionhsu.backend.common.exception.CustomException;
-//import org.likelionhsu.backend.common.exception.ErrorCode;
-//import org.likelionhsu.backend.weather.dto.WeatherResponseDto;
-//import org.mockito.InjectMocks;
-//import org.mockito.Mock;
-//import org.mockito.junit.jupiter.MockitoExtension;
-//import org.springframework.http.HttpEntity;
-//import org.springframework.http.HttpHeaders;
-//import org.springframework.http.HttpMethod;
-//import org.springframework.http.HttpStatus;
-//import org.springframework.http.MediaType;
-//import org.springframework.http.ResponseEntity;
-//import org.springframework.web.client.RestTemplate;
-//
-//import java.net.URI;
-//import java.time.LocalDateTime;
-//import java.util.Arrays;
-//import java.util.Collections;
-//import java.util.List;
-//
-//import static org.assertj.core.api.Assertions.assertThat;
-//import static org.junit.jupiter.api.Assertions.assertThrows;
-//import static org.mockito.ArgumentMatchers.any;
-//import static org.mockito.ArgumentMatchers.eq;
-//import static org.mockito.ArgumentMatchers.anyString;
-//import static org.mockito.Mockito.doReturn;
-//import static org.mockito.Mockito.when;
-//import static org.mockito.Mockito.verify;
-//import static org.mockito.Mockito.times;
-//import static org.mockito.Mockito.lenient; // lenient import 추가
-//
-//@ExtendWith(MockitoExtension.class)
-//class WeatherServiceTest {
-//
-//    @Mock
-//    private RestTemplate restTemplate;
-//
-//    @Mock
-//    private ObjectMapper objectMapper;
-//
-//    @Mock
-//    private KmaApiConfig kmaApiConfig;
-//
-//    @InjectMocks
-//    private WeatherService weatherService;
-//
-//    private String mockKmaApiResponseSuccessPty0;
-//    private String mockKmaApiResponseSuccessPty1;
-//    private String mockKmaApiResponseFail;
-//
-//    @BeforeEach
-//    void setUp() {
-//        // Mock KmaApiConfig properties
-//        lenient().when(kmaApiConfig.getServiceKey()).thenReturn("testServiceKey");
-//        lenient().when(kmaApiConfig.getBaseUrl()).thenReturn("http://apis.data.go.kr/1360000/VilageFcstInfoServiceU");
-//
-//        RegionCoordinate seosan = new RegionCoordinate();
-//        seosan.setName("서산시");
-//        seosan.setNx(50);
-//        seosan.setNy(120);
-//
-//        RegionCoordinate taean = new RegionCoordinate();
-//        taean.setName("태안군");
-//        taean.setNx(51);
-//        taean.setNy(121);
-//
-//        lenient().when(kmaApiConfig.getGridCoords()).thenReturn(Arrays.asList(seosan, taean));
-//
-//        // Mock KMA API successful response (PTY 0 - 맑음)
-//        mockKmaApiResponseSuccessPty0 = "{\"response\":{\"header\":{\"resultCode\":\"00\",\"resultMsg\":\"NORMAL_SERVICE\"},\"body\":{\"dataType\":\"JSON\",\"items\":{\"item\":[{\"baseDate\":\"20230101\",\"baseTime\":\"0600\",\"category\":\"T1H\",\"obsrValue\":\"25.0\"},{\"baseDate\":\"20230101\",\"baseTime\":\"0600\",\"category\":\"REH\",\"obsrValue\":\"70\"},{\"baseDate\":\"20230101\",\"baseTime\":\"0600\",\"category\":\"PTY\",\"obsrValue\":\"0\"},{\"baseDate\":\"20230101\",\"baseTime\":\"0600\",\"category\":\"WSD\",\"obsrValue\":\"3.5\"}]},\"pageNo\":1,\"numOfRows\":100,\"totalCount\":4}}}";
-//
-//        // Mock KMA API successful response (PTY 1 - 비)
-//        mockKmaApiResponseSuccessPty1 = "{\"response\":{\"header\":{\"resultCode\":\"00\",\"resultMsg\":\"NORMAL_SERVICE\"},\"body\":{\"dataType\":\"JSON\",\"items\":{\"item\":[{\"baseDate\":\"20230101\",\"baseTime\":\"0600\",\"category\":\"T1H\",\"obsrValue\":\"20.0\"},{\"baseDate\":\"20230101\",\"baseTime\":\"0600\",\"category\":\"REH\",\"obsrValue\":\"90\"},{\"baseDate\":\"20230101\",\"baseTime\":\"0600\",\"category\":\"PTY\",\"obsrValue\":\"1\"},{\"baseDate\":\"20230101\",\"baseTime\":\"0600\",\"category\":\"WSD\",\"obsrValue\":\"5.0\"}]},\"pageNo\":1,\"numOfRows\":100,\"totalCount\":4}}}";
-//
-//        // Mock KMA API failed response
-//        mockKmaApiResponseFail = "{\"response\":{\"header\":{\"resultCode\":\"99\",\"resultMsg\":\"APPLICATION_ERROR\"},\"body\":{}}}";
-//    }
-//
-//    @Test
-//    @DisplayName("날씨 정보 조회 성공 - PTY 0 (맑음)")
-//    void getWeather_successPty0() throws Exception {
-//        // Given
-//        String region = "서산시";
-//        HttpHeaders headers = new HttpHeaders();
-//        headers.setContentType(MediaType.APPLICATION_JSON); // Content-Type 설정
-//        ResponseEntity<String> mockResponseEntity = new ResponseEntity<>(mockKmaApiResponseSuccessPty0, headers, HttpStatus.OK);
-//        when(restTemplate.exchange(any(URI.class), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
-//                .thenReturn(mockResponseEntity);
-//
-//        JsonNode mockJsonNode = new ObjectMapper().readTree(mockKmaApiResponseSuccessPty0);
-//        when(objectMapper.readTree(any(String.class))).thenReturn(mockJsonNode);
-//
-//        // When
-//        WeatherResponseDto result = weatherService.getWeather(region);
-//
-//        // Then
-//        assertThat(result).isNotNull();
-//        assertThat(result.getRegion()).isEqualTo(region);
-//        assertThat(result.getTemperature()).isEqualTo("25.0");
-//        assertThat(result.getHumidity()).isEqualTo("70");
-//        assertThat(result.getSkyDescription()).isEqualTo("맑음");
-//        assertThat(result.getWindSpeed()).isEqualTo("3.5");
-//    }
-//
-//    @Test
-//    @DisplayName("날씨 정보 조회 성공 - PTY 1 (비)")
-//    void getWeather_successPty1() throws Exception {
-//        // Given
-//        String region = "서산시";
-//        HttpHeaders headers = new HttpHeaders();
-//        headers.setContentType(MediaType.APPLICATION_JSON); // Content-Type 설정
-//        ResponseEntity<String> mockResponseEntity = new ResponseEntity<>(mockKmaApiResponseSuccessPty1, headers, HttpStatus.OK);
-//        when(restTemplate.exchange(any(URI.class), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
-//                .thenReturn(mockResponseEntity);
-//
-//        JsonNode mockJsonNode = new ObjectMapper().readTree(mockKmaApiResponseSuccessPty1);
-//        when(objectMapper.readTree(any(String.class))).thenReturn(mockJsonNode);
-//
-//        // When
-//        WeatherResponseDto result = weatherService.getWeather(region);
-//
-//        // Then
-//        assertThat(result).isNotNull();
-//        assertThat(result.getRegion()).isEqualTo(region);
-//        assertThat(result.getTemperature()).isEqualTo("20.0");
-//        assertThat(result.getHumidity()).isEqualTo("90");
-//        assertThat(result.getSkyDescription()).isEqualTo("비");
-//        assertThat(result.getWindSpeed()).isEqualTo("5.0");
-//    }
-//
-//    @Test
-//    @DisplayName("지원하지 않는 지역으로 날씨 정보 조회 시 예외 발생")
-//    void getWeather_unsupportedRegion() {
-//        // Given
-//        String region = "없는지역";
-//
-//        // When & Then
-//        CustomException exception = assertThrows(CustomException.class, () ->
-//                weatherService.getWeather(region)
-//        );
-//        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
-//        assertThat(exception.getMessage()).contains("지원하지 않는 지역입니다: " + region); // contains로 변경
-//    }
-//
-//    @Test
-//    @DisplayName("기상청 API 응답 형식 오류 시 예외 발생 (JSON 아님)")
-//    void getWeather_apiResponseContentTypeError() throws Exception { // throws Exception 추가
-//        // Given
-//        String region = "서산시";
-//        HttpHeaders headers = new HttpHeaders();
-//        headers.setContentType(MediaType.TEXT_PLAIN); // Non-JSON content type
-//        ResponseEntity<String> mockResponseEntity = new ResponseEntity<>("Not a JSON", headers, HttpStatus.OK);
-//
-//        when(restTemplate.exchange(any(URI.class), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
-//                .thenReturn(mockResponseEntity);
-//
-//        // When & Then
-//        CustomException exception = assertThrows(CustomException.class, () ->
-//                weatherService.getWeather(region)
-//        );
-//        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INTERNAL_SERVER_ERROR);
-//        assertThat(exception.getMessage()).contains("기상청 API 응답 형식 이 올바르지 않습니다. (JSON 아님)"); // contains로 변경
-//        verify(objectMapper, times(0)).readTree(anyString()); // readTree가 호출되지 않았음을 검증
-//    }
-//
-//    @Test
-//    @DisplayName("기상청 API 결과 코드 오류 시 예외 발생 (00 아님)")
-//    void getWeather_apiResultCodeError() throws Exception {
-//        // Given
-//        String region = "서산시";
-//        HttpHeaders headers = new HttpHeaders();
-//        headers.setContentType(MediaType.APPLICATION_JSON); // Content-Type 설정
-//        ResponseEntity<String> mockResponseEntity = new ResponseEntity<>(mockKmaApiResponseFail, headers, HttpStatus.OK);
-//        when(restTemplate.exchange(any(URI.class), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
-//                .thenReturn(mockResponseEntity);
-//
-//        JsonNode mockJsonNode = new ObjectMapper().readTree(mockKmaApiResponseFail);
-//        when(objectMapper.readTree(any(String.class))).thenReturn(mockJsonNode);
-//
-//        // When & Then
-//        CustomException exception = assertThrows(CustomException.class, () ->
-//                weatherService.getWeather(region)
-//        );
-//        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INTERNAL_SERVER_ERROR);
-//        assertThat(exception.getMessage()).contains("기상청 API 호출 실패: APPLICATION_ERROR"); // contains로 변경
-//    }
-//
-//    @Test
-//    @DisplayName("기상청 API 호출 중 일반 예외 발생 시 처리")
-//    void getWeather_generalException() {
-//        // Given
-//        String region = "서산시";
-//        when(restTemplate.exchange(any(URI.class), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
-//                .thenThrow(new RuntimeException("API call failed"));
-//
-//        // When & Then
-//        CustomException exception = assertThrows(CustomException.class, () ->
-//                weatherService.getWeather(region)
-//        );
-//        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INTERNAL_SERVER_ERROR);
-//        assertThat(exception.getMessage()).contains("API call failed"); // ErrorCode의 기본 메시지 대신 RuntimeException의 메시지를 포함하도록 변경
-//    }
-//}
+package org.likelionhsu.backend.weather.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.likelionhsu.backend.common.config.KmaApiConfig;
+import org.likelionhsu.backend.weather.dto.WeatherCardDto;
+import org.likelionhsu.backend.weather.dto.WeatherCardsResponse;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
+
+import java.net.URI;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.given;
+
+@ExtendWith(MockitoExtension.class)
+class WeatherServiceTest {
+
+    @Mock
+    private RestTemplate restTemplate;
+    @Mock
+    private KmaApiConfig kmaApiConfig;
+
+    // 실제 ObjectMapper를 사용하여 JSON 파싱 로직을 테스트
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
+
+    @InjectMocks
+    private WeatherService weatherService;
+
+    @BeforeEach
+    void setUp() {
+        // 오류 해결: new RegionCoordinate() 생성자가 없으므로, 기본 생성자와 setter를 사용하도록 수정
+        KmaApiConfig.RegionCoordinate haemi = new KmaApiConfig.RegionCoordinate();
+        haemi.setName("해미면");
+        haemi.setNx(68);
+        haemi.setNy(99);
+
+        KmaApiConfig.RegionCoordinate seongyeon = new KmaApiConfig.RegionCoordinate();
+        seongyeon.setName("성연면");
+        seongyeon.setNx(69);
+        seongyeon.setNy(100);
+
+        List<KmaApiConfig.RegionCoordinate> coords = List.of(haemi, seongyeon);
+
+        // Mock 설정
+        given(kmaApiConfig.getGridCoords()).willReturn(coords);
+        given(kmaApiConfig.getBaseUrl()).willReturn("https://api.test");
+        given(kmaApiConfig.getServiceKey()).willReturn("DUMMY_KEY");
+
+        // RestTemplate의 동작을 모의(Mocking)
+        // invocation을 사용하여 들어오는 요청 URI에 따라 다른 응답을 반환하도록 설정
+        given(restTemplate.exchange(any(URI.class), eq(org.springframework.http.HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
+                .willAnswer(invocation -> {
+                    URI uri = invocation.getArgument(0);
+                    String path = uri.getPath();
+                    String query = uri.getQuery();
+                    String body;
+
+                    // 실황(ncst) API 호출에 대한 모의 응답
+                    if (path.contains("getUltraSrtNcst")) {
+                        if (query.contains("nx=68")) { // 해미면
+                            body = "{\"response\":{\"header\":{\"resultCode\":\"00\"},\"body\":{\"items\":{\"item\":[{\"category\":\"T1H\",\"obsrValue\":\"29.6\"},{\"category\":\"REH\",\"obsrValue\":\"72\"},{\"category\":\"WSD\",\"obsrValue\":\"1.1\"},{\"category\":\"VEC\",\"obsrValue\":\"220\"}]}}}}";
+                        } else { // 성연면
+                            body = "{\"response\":{\"header\":{\"resultCode\":\"00\"},\"body\":{\"items\":{\"item\":[{\"category\":\"T1H\",\"obsrValue\":\"28.8\"},{\"category\":\"REH\",\"obsrValue\":\"65\"},{\"category\":\"WSD\",\"obsrValue\":\"0.8\"},{\"category\":\"VEC\",\"obsrValue\":\"270\"}]}}}}";
+                        }
+                        return new ResponseEntity<>(body, HttpStatus.OK);
+                    }
+
+                    // 예보(fcst) API 호출에 대한 모의 응답
+                    if (path.contains("getUltraSrtFcst")) {
+                        if (query.contains("nx=68")) { // 해미면
+                            body = "{\"response\":{\"header\":{\"resultCode\":\"00\"},\"body\":{\"items\":{\"item\":[{\"category\":\"SKY\",\"fcstDate\":\"20990101\",\"fcstTime\":\"1100\",\"fcstValue\":\"1\"},{\"category\":\"PTY\",\"fcstDate\":\"20990101\",\"fcstTime\":\"1100\",\"fcstValue\":\"0\"}]}}}}";
+                        } else { // 성연면
+                            body = "{\"response\":{\"header\":{\"resultCode\":\"00\"},\"body\":{\"items\":{\"item\":[{\"category\":\"SKY\",\"fcstDate\":\"20990101\",\"fcstTime\":\"1100\",\"fcstValue\":\"3\"},{\"category\":\"PTY\",\"fcstDate\":\"20990101\",\"fcstTime\":\"1100\",\"fcstValue\":\"0\"}]}}}}";
+                        }
+                        return new ResponseEntity<>(body, HttpStatus.OK);
+                    }
+
+                    return new ResponseEntity<>("{\"response\":{\"header\":{\"resultCode\":\"99\"}}}", HttpStatus.BAD_REQUEST);
+                });
+    }
+
+    @Test
+    @DisplayName("gridCoords 2곳에 대해 실황+예보를 결합하여 카드 2개 생성")
+    void getCardsByCity_buildsTwoCardsSuccessfully() {
+        // When
+        WeatherCardsResponse res = weatherService.getCardsByCity("서산시 전체");
+
+        // Then
+        assertThat(res.getCity()).isEqualTo("서산시 전체");
+        assertThat(res.getCards()).hasSize(2);
+
+        // 첫 번째 카드(해미면) 검증
+        WeatherCardDto haemiCard = res.getCards().stream()
+                .filter(c -> "해미면".equals(c.getRegion()))
+                .findFirst().orElse(null);
+
+        assertThat(haemiCard).isNotNull();
+        assertThat(haemiCard.getTemperature()).isEqualTo(29.6);
+        assertThat(haemiCard.getWindDirection()).isEqualTo("남서풍");
+        assertThat(haemiCard.getCondition()).isEqualTo("맑음"); // SKY=1, PTY=0 -> 맑음
+
+        // 두 번째 카드(성연면) 검증
+        WeatherCardDto seongyeonCard = res.getCards().stream()
+                .filter(c -> "성연면".equals(c.getRegion()))
+                .findFirst().orElse(null);
+
+        assertThat(seongyeonCard).isNotNull();
+        assertThat(seongyeonCard.getTemperature()).isEqualTo(28.8);
+        assertThat(seongyeonCard.getWindDirection()).isEqualTo("서풍");
+        assertThat(seongyeonCard.getCondition()).isEqualTo("흐림"); // SKY=3, PTY=0 -> 흐림 (코드 로직상 구름많음도 흐림으로 처리됨)
+    }
+}
