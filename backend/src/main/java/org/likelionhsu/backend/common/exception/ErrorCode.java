@@ -3,12 +3,13 @@ package org.likelionhsu.backend.common.exception;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
-@Getter
+ @Getter
 public enum ErrorCode {
 
     // Common
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "입력 값이 올바르지 않습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버에 오류가 발생했습니다."),
+    EXTERNAL_API_ERROR(HttpStatus.SERVICE_UNAVAILABLE, "외부 API 호출에 실패했습니다."),
 
     // Post
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
