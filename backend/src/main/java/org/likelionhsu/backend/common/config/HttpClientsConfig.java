@@ -64,7 +64,7 @@ public class HttpClientsConfig {
                 .exchangeStrategies(strategies(8))
                 .filter(timing("flask"))
                 .defaultHeader("Accept", "application/json")
-//                .defaultHeader("Accept-Encoding", "gzip")
+                .defaultHeader("Accept-Encoding", "identity")
                 .build();
     }
 
@@ -80,7 +80,7 @@ public class HttpClientsConfig {
                 .exchangeStrategies(strategies(8))
                 .filter(timing("ext"))
                 .defaultHeader("Accept", "application/json")
-//                .defaultHeader("Accept-Encoding", "gzip")
+                .defaultHeader("Accept-Encoding", "identity")
                 .build();
     }
 }
