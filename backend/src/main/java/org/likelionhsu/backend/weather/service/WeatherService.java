@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.backend.common.config.KmaApiConfig;
 import org.likelionhsu.backend.common.config.KmaApiConfig.RegionCoordinate;
@@ -12,12 +11,15 @@ import org.likelionhsu.backend.common.exception.CustomException;
 import org.likelionhsu.backend.common.exception.ErrorCode;
 import org.likelionhsu.backend.weather.dto.WeatherCardDto;
 import org.likelionhsu.backend.weather.dto.WeatherCardsResponse;
-import org.springframework.http.*;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.util.retry.Retry;
 
 import java.net.URI;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -25,13 +27,22 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class WeatherService {
 
-    private final RestTemplate restTemplate;
+    private final WebClient external;
     private final ObjectMapper objectMapper;
     private final KmaApiConfig kmaApiConfig;
+
+    public WeatherService(
+            ObjectMapper objectMapper,
+            KmaApiConfig kmaApiConfig,
+            @Qualifier("externalWebClient") WebClient external
+    ) {
+        this.objectMapper = objectMapper;
+        this.kmaApiConfig = kmaApiConfig;
+        this.external = external;
+    }
 
     private static final String NCST_PATH = "getUltraSrtNcst";  // 초단기실황
     private static final String FCST_PATH = "getUltraSrtFcst";  // 초단기예보
@@ -148,7 +159,10 @@ public class WeatherService {
     }
 
     private KmaResponse callKma(String path, String baseDate, String baseTime, int nx, int ny, boolean isNcst) {
-        URI uri = UriComponentsBuilder.fromUriString(kmaApiConfig.getBaseUrl() + "/" + path)
+        // kmaApi.base-url + /{path} 형태 유지
+        URI uri = org.springframework.web.util.UriComponentsBuilder
+                .fromUriString(kmaApiConfig.getBaseUrl())
+                .path("/" + path)
                 .queryParam("serviceKey", kmaApiConfig.getServiceKey())
                 .queryParam("pageNo", "1")
                 .queryParam("numOfRows", isNcst ? "200" : "1000")
@@ -159,14 +173,18 @@ public class WeatherService {
                 .queryParam("ny", ny)
                 .build(true).toUri();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        ResponseEntity<String> res = restTemplate.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+        String body = external.get()
+                .uri(uri)
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(90))
+                .retryWhen(Retry.backoff(2, Duration.ofMillis(500)).filter(this::isRetryable))
+                .block();
 
-        String body = res.getBody();
-        if (body == null || !res.getHeaders().getContentType().isCompatibleWith(MediaType.APPLICATION_JSON)) {
-            log.warn("KMA 비-JSON 응답. URI: {}, Content-Type: {}, Body: {}", uri, res.getHeaders().getContentType(), body);
-            throw new CustomException(ErrorCode.EXTERNAL_API_ERROR, "KMA 비-JSON 응답");
+        if (body == null || body.isBlank()) {
+            log.warn("KMA 빈 응답. URI: {}", uri);
+            throw new CustomException(ErrorCode.EXTERNAL_API_ERROR, "KMA 빈 응답");
         }
 
         JsonNode root;
@@ -201,6 +219,15 @@ public class WeatherService {
             }
         }
         return new KmaResponse(resultCode, items, dataMap);
+    }
+
+    private boolean isRetryable(Throwable t) {
+        if (t instanceof WebClientResponseException ex) {
+            int s = ex.getRawStatusCode();
+            return s == 429 || (s >= 500 && s < 600);
+        }
+        return t instanceof java.io.IOException
+                || t instanceof java.util.concurrent.TimeoutException;
     }
 
     private static String resolveCondition(String pty, String sky) {
