@@ -50,6 +50,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: seosan-backend-app
+    # ports:  <-- 이 부분을 제거했습니다. Nginx가 외부 접속을 담당합니다.
     depends_on:
       db:
         condition: service_healthy
