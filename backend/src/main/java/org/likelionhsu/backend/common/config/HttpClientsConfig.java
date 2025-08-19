@@ -80,7 +80,7 @@ public class HttpClientsConfig {
                 .exchangeStrategies(strategies(8))
                 .filter(timing("ext"))
                 .defaultHeader("Accept", "application/json")
-                .defaultHeader("Accept-Encoding", "identity")
+//                .defaultHeader("Accept-Encoding", "identity")
                 .build();
     }
 }
