@@ -25,10 +25,14 @@ public class PostController {
     @GetMapping
     public ResponseEntity<Page<PostResponseDto>> getFilteredPosts(
             @RequestParam(required = false) String region,
-            @RequestParam(required = false) Category category,
+            @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Page<PostResponseDto> posts = postService.findPostsByFilter(region, category, page, size);
+        Category categoryEnum = null;
+        if (category != null && !category.isEmpty()) {
+            categoryEnum = Category.fromValue(category);
+        }
+        Page<PostResponseDto> posts = postService.findPostsByFilter(region, categoryEnum, page, size);
         return ResponseEntity.ok(posts);
     }
 

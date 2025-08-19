@@ -12,13 +12,20 @@ services:
     volumes:
       - db-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$DB_PASSWORD"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$DB_PASSWORD"]
       interval: 5s
       timeout: 20s
       retries: 10
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
+
+  redis:
+    image: redis:latest
+    container_name: seosan-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD}
 
   crawler:
     build:
@@ -43,12 +50,13 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: seosan-backend-app
-    ports:
-      - "8083:8083"
+    # ports:  <-- 이 부분을 제거했습니다. Nginx가 외부 접속을 담당합니다.
     depends_on:
       db:
         condition: service_healthy
       crawler:
+        condition: service_started
+      redis:
         condition: service_started
     restart: always
     env_file:
@@ -56,6 +64,26 @@ services:
     environment:
       PORT: 8083
       SPRING_PROFILES_ACTIVE: docker
+
+  nginx:
+    image: nginx:latest
+    container_name: seosan-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - backend
+
+  certbot:
+    image: certbot/certbot
+    container_name: seosan-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
 
 volumes:
   db-data:
