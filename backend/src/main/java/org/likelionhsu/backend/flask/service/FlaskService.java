@@ -1,7 +1,6 @@
 // src/main/java/org/likelionhsu/backend/flask/service/FlaskService.java
 package org.likelionhsu.backend.flask.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.backend.flask.dto.request.SummarizeRequest;
 import org.likelionhsu.backend.flask.dto.response.SummarizeResponse;
@@ -16,11 +15,14 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class FlaskService {
 
-    @Qualifier("flaskWebClient")
     private final WebClient flask;
+
+    // ★ 명시적 생성자 + 파라미터에 @Qualifier
+    public FlaskService(@Qualifier("flaskWebClient") WebClient flask) {
+        this.flask = flask;
+    }
 
     public ResponseEntity<?> crawlAll(Integer pages) {
         var body = flask.get()
@@ -29,7 +31,7 @@ public class FlaskService {
                         .build())
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
-                .timeout(Duration.ofSeconds(305))   // 호출부 가드
+                .timeout(Duration.ofSeconds(305))
                 .block();
         return ResponseEntity.ok(body);
     }
