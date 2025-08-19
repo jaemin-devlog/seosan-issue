@@ -1,5 +1,11 @@
-#application-docker.yml
+server:
+  tomcat:
+    connection-timeout: 310s     # ★ Nginx보다 살짝 여유
+
 spring:
+  mvc:
+    async:
+      request-timeout: 305s      # 비동기 컨트롤러(있다면) 타임아웃 상향
   datasource:
     url: jdbc:mysql://db:3306/${DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
   data:
