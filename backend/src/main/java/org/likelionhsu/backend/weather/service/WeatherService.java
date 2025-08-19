@@ -129,7 +129,7 @@ public class WeatherService {
      * isNcst=true  → obsrValue (실황)
      * isNcst=false → fcstValue (예보: 최신 fcstDate+fcstTime 중 SKY/PTY만 추출)
      */
-    private Map<String, String> callKma(String path, String baseDate, String baseTime,
+        private Map<String, String> callKma(String path, String baseDate, String baseTime,
                                         int nx, int ny, boolean isNcst) {
         URI uri = UriComponentsBuilder.fromUriString(kmaApiConfig.getBaseUrl() + "/" + path)
                 .queryParam("serviceKey", kmaApiConfig.getServiceKey())
@@ -147,16 +147,25 @@ public class WeatherService {
         headers.set("User-Agent", "Mozilla/5.0");
         ResponseEntity<String> res = restTemplate.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), String.class);
 
+        log.debug("KMA API URI: {}", uri);
+        log.debug("KMA API Response: {}", res.getBody());
+
         JsonNode root;
         try {
+            if (res.getBody() == null || !res.getBody().trim().startsWith("{")) {
+                log.error("KMA 응답이 비어있거나 JSON 형식이 아닙니다. Body: {}", res.getBody());
+                throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "KMA 응답이 비어있거나 JSON 형식이 아닙니다.");
+            }
             root = objectMapper.readTree(res.getBody());
         } catch (Exception e) {
+            log.error("KMA 응답 파싱 실패. Body: {}", res.getBody(), e);
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "KMA 응답 파싱 실패");
         }
 
         String code = root.path("response").path("header").path("resultCode").asText();
         if (!"00".equals(code)) {
             String msg = root.path("response").path("header").path("resultMsg").asText();
+            log.error("KMA API가 에러 코드를 반환했습니다. Code: {}, Msg: {}", code, msg);
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "KMA 호출 실패: " + msg);
         }
 
