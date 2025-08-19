@@ -34,6 +34,7 @@ public class WeatherService {
     private final ObjectMapper objectMapper;
     private final KmaApiConfig kmaApiConfig;
 
+    // ★ 생성자 파라미터에 Qualifier 명시
     public WeatherService(
             ObjectMapper objectMapper,
             KmaApiConfig kmaApiConfig,
@@ -159,7 +160,7 @@ public class WeatherService {
     }
 
     private KmaResponse callKma(String path, String baseDate, String baseTime, int nx, int ny, boolean isNcst) {
-        // kmaApi.base-url + /{path} 형태 유지
+        // kma.api.base-url + /{path}
         URI uri = org.springframework.web.util.UriComponentsBuilder
                 .fromUriString(kmaApiConfig.getBaseUrl())
                 .path("/" + path)

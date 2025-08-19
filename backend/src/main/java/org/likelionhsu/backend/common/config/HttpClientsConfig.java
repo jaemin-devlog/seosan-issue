@@ -20,9 +20,7 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class HttpClientsConfig {
 
-    /**
-     * 요청/응답 타이밍 로깅 필터
-     */
+    /** 요청/응답 타이밍 로깅 */
     private static ExchangeFilterFunction timing(String tag) {
         return (request, next) -> {
             long t0 = System.nanoTime();
@@ -30,36 +28,25 @@ public class HttpClientsConfig {
                     .doOnNext(res -> {
                         long ms = (System.nanoTime() - t0) / 1_000_000;
                         log.info("[{}] {} {} -> {} {}ms",
-                                tag,
-                                request.method(),
-                                request.url(),
-                                res.rawStatusCode(),
-                                ms);
+                                tag, request.method(), request.url(),
+                                res.rawStatusCode(), ms);
                     })
                     .doOnError(err -> {
                         long ms = (System.nanoTime() - t0) / 1_000_000;
                         log.warn("[{}] {} {} -> ERR {}ms : {}",
-                                tag,
-                                request.method(),
-                                request.url(),
-                                ms,
-                                err.toString());
+                                tag, request.method(), request.url(), ms, err.toString());
                     });
         };
     }
 
-    /**
-     * 큰 응답(최대 8MB) 허용
-     */
+    /** 큰 응답(최대 8MB) 허용 */
     private static ExchangeStrategies strategies(int mb) {
         return ExchangeStrategies.builder()
                 .codecs(c -> c.defaultCodecs().maxInMemorySize(mb * 1024 * 1024))
                 .build();
     }
 
-    /**
-     * Flask 모델 서버 호출용 WebClient (300s)
-     */
+    /** Flask 모델 서버 (체인 300s) */
     @Bean("flaskWebClient")
     public WebClient flaskWebClient(
             WebClient.Builder builder,
@@ -81,9 +68,7 @@ public class HttpClientsConfig {
                 .build();
     }
 
-    /**
-     * 외부 API (NAVER, KMA 등) 호출용 WebClient (90s)
-     */
+    /** 외부 API (NAVER/KMA 등, 90s) */
     @Bean("externalWebClient")
     public WebClient externalWebClient(WebClient.Builder builder) {
         HttpClient http = HttpClient.create()

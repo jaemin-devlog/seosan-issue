@@ -1,4 +1,3 @@
-// src/main/java/org/likelionhsu/backend/flask/service/FlaskService.java
 package org.likelionhsu.backend.flask.service;
 
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +18,7 @@ public class FlaskService {
 
     private final WebClient flask;
 
-    // ★ 명시적 생성자 + 파라미터에 @Qualifier
+    // ★ 생성자 파라미터에 Qualifier 명시
     public FlaskService(@Qualifier("flaskWebClient") WebClient flask) {
         this.flask = flask;
     }
@@ -27,7 +26,9 @@ public class FlaskService {
     public ResponseEntity<?> crawlAll(Integer pages) {
         var body = flask.get()
                 .uri(uriBuilder -> uriBuilder.path("/crawl_all")
-                        .queryParamIfPresent("pages", pages == null ? java.util.Optional.empty() : java.util.Optional.of(pages))
+                        .queryParamIfPresent("pages", pages == null
+                                ? java.util.Optional.empty()
+                                : java.util.Optional.of(pages))
                         .build())
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})

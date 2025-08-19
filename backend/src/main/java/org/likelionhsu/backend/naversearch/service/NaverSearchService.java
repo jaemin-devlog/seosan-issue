@@ -2,7 +2,6 @@ package org.likelionhsu.backend.naversearch.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.backend.naversearch.NaverSearchItemDto;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -21,7 +20,6 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class NaverSearchService {
 
     @Value("${naver.api.client-id}")
@@ -31,7 +29,16 @@ public class NaverSearchService {
     private String clientSecret;
 
     private final ObjectMapper objectMapper;
-    private final @Qualifier("externalWebClient") WebClient external;
+    private final WebClient external;
+
+    // ★ 생성자 파라미터에 Qualifier 명시
+    public NaverSearchService(
+            ObjectMapper objectMapper,
+            @Qualifier("externalWebClient") WebClient external
+    ) {
+        this.objectMapper = objectMapper;
+        this.external = external;
+    }
 
     private static final String NAVER_HOST = "openapi.naver.com";
     private static final String DATALAB_PATH = "/v1/datalab/search";
@@ -81,7 +88,7 @@ public class NaverSearchService {
             key = "#type + '::' + #query + '::' + #display",
             unless = "#result == null || #result.isEmpty()")
     public List<NaverSearchItemDto> search(String type, String query, int display) {
-        int d = Math.max(1, display); // 필요시 상한 적용 가능
+        int d = Math.max(1, display);
 
         String json = external.get()
                 .uri(uri -> uri.scheme("https")
