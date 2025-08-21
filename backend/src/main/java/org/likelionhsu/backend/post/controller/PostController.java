@@ -5,15 +5,9 @@ import org.likelionhsu.backend.post.domain.Category;
 import org.likelionhsu.backend.post.dto.response.PostDetailResponseDto;
 import org.likelionhsu.backend.post.dto.response.PostResponseDto;
 import org.likelionhsu.backend.post.service.PostService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 import org.springframework.data.domain.Page;
-import java.util.List;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
