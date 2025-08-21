@@ -95,3 +95,26 @@ springdoc:
     path: /v3/api-docs
   packages-to-scan: org.likelionhsu.backend
   paths-to-match: /api/v1/**, /flask/**
+
+ai:
+  prompt:
+    mode: strict          # strict | balanced
+    max-summary-chars: 120
+    one-line-tldr-chars: 28
+    banned-phrases:
+      - "관련 기사"
+      - "이 시각"
+      - "오늘의"
+      - "키워드"
+      - "요약:"
+      - "목록:"
+      - "프롬프트"
+      - "역할:"
+      - "목표:"
+      - "규칙:"
+    stop-sequences: ["관련 기사", "이 시각", "오늘의", "키워드", "요약:", "목록:", "역할:", "목표:", "규칙:", "프롬프트", "\"\"\"", "```", "---"]
+  summarizer:
+    temperature: 0.2
+    top-p: 0.3
+    repetition-penalty: 1.18
+    max-tokens: 220       # 요구 길이 + 소폭 여유
