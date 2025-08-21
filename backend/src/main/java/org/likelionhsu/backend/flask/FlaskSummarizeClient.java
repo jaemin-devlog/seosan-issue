@@ -1,31 +1,50 @@
 package org.likelionhsu.backend.flask;
 
-import org.likelionhsu.backend.flask.dto.request.SummarizeRequest;
-import org.likelionhsu.backend.flask.dto.response.SummarizeResponse;
-import org.springframework.beans.factory.annotation.Qualifier;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
-import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 @Component
+@RequiredArgsConstructor
 public class FlaskSummarizeClient {
 
-    private final WebClient webClient;
+    private final WebClient flaskWebClient;
 
-    // ★ 생성자 파라미터에 Qualifier 명시
-    public FlaskSummarizeClient(@Qualifier("flaskWebClient") WebClient webClient) {
-        this.webClient = webClient;
-    }
+    @Value("${ai.summarizer.temperature:0.2}")
+    private double temperature;
+    @Value("${ai.summarizer.top-p:0.3}")
+    private double topP;
+    @Value("${ai.summarizer.repetition-penalty:1.18}")
+    private double repetitionPenalty;
+    @Value("${ai.summarizer.max-tokens:220}")
+    private int maxTokens;
+    @Value("${ai.prompt.stop-sequences:}")
+    private List<String> stopSequences;
 
-    public String summarize(String input) {
-        SummarizeResponse res = webClient.post()
+    public Mono<String> summarize(String system, String user) {
+        Map<String, Object> payload = Map.of(
+                "system", system,
+                "user", user,
+                "generation", Map.of(
+                        "temperature", temperature,
+                        "top_p", topP,
+                        "repetition_penalty", repetitionPenalty,
+                        "max_tokens", maxTokens,
+                        "stop", stopSequences
+                )
+        );
+
+        return flaskWebClient.post()
                 .uri("/summarize")
-                .bodyValue(new SummarizeRequest(input))
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(payload)
                 .retrieve()
-                .bodyToMono(SummarizeResponse.class)
-                .timeout(Duration.ofSeconds(305))
-                .block();
-        return res == null ? null : res.summary();
+                .bodyToMono(String.class);
     }
 }
