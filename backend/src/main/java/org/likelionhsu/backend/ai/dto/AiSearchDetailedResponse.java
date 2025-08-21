@@ -1,9 +1,12 @@
+// backend/src/main/java/org/likelionhsu/backend/ai/dto/AiSearchDetailedResponse.java
 package org.likelionhsu.backend.ai.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record AiSearchDetailedResponse(
-        String tldr,                 // 최종 재요약(3~5줄)
-        List<PerDocSummary> items,   // 출처별 1~2문장 요약
-        List<String> sources         // 링크 목록
+        String tldr,
+        List<PerDocSummary> items,
+        List<String> sources
 ) {}
