@@ -1,30 +1,46 @@
-# crawler/bart.py
 from transformers import BartForConditionalGeneration, AutoTokenizer
-import torch  # 추가
+import torch, re
 
-# Load the BART model and tokenizer
-model = BartForConditionalGeneration.from_pretrained("gogamza/kobart-summarization")
-tokenizer = AutoTokenizer.from_pretrained("gogamza/kobart-summarization")
-
-# 추론 모드로 고정
+model_name = "gogamza/kobart-summarization"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = BartForConditionalGeneration.from_pretrained(model_name)
 model.eval()
 
-def summarize_text(content: str) -> str:
-    """
-    주어진 텍스트를 요약하는 함수.
-    """
-    input_text = content.strip().replace("\n", " ")
-    inputs = tokenizer([input_text], max_length=1024, return_tensors="pt")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
 
-    # 그래디언트 비활성화로 추론 가속/메모리 절감
+def _preclean(text: str) -> str:
+    if not text:
+        return ""
+    # 줄바꿈/공백 정리
+    t = re.sub(r"\s+", " ", text.strip())
+    # 너무 긴 입력은 잘라서 요약 품질 유지 (토큰 기준 1024와 대응)
+    return t[:4000]  # 대략 문자 기준 컷—필요시 조절
+
+def summarize_text(content: str) -> str:
+    text = _preclean(content)
+    if not text:
+        return ""
+
+    inputs = tokenizer([text], max_length=1024, truncation=True, return_tensors="pt").to(device)
+
     with torch.inference_mode():
         summary_ids = model.generate(
             inputs["input_ids"],
-            max_length=200,
+            max_length=140,
             min_length=30,
-            num_beams=2,
-            length_penalty=2.0,
+            do_sample=True,        # 샘플링 사용
+            top_p=0.92,            # 누클리어스
+            top_k=50,
+            temperature=0.9,
+            no_repeat_ngram_size=4,
+            repetition_penalty=1.3,
             early_stopping=True
-        )
+    )
+
     summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+
+    # 후처리: 공백/반복 토큰 정리(과하면 끄세요)
+    summary = re.sub(r"\s+", " ", summary).strip()
+    summary = re.sub(r"([가-힣A-Za-z0-9]{1,3})(\s+\1){2,}", r"\1", summary)  # 같은 토큰 3회↑ 연속 축약
     return summary

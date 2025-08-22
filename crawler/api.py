@@ -103,15 +103,21 @@ def crawl_all():
 def summarize():
     from bart import summarize_text
     try:
-        data = request.get_json()
-        text = data.get('text', '')
+        data = request.get_json(silent=True) or {}
+        # 자바/타 클라이언트 호환: 'text' 우선, 없으면 'user'나 'prompt'도 수용
+        text = (data.get('text')
+                or data.get('user')
+                or data.get('prompt')
+                or '').strip()
         if not text:
             return jsonify({"error": "No text provided"}), 400
+
         summary = summarize_text(text)
         return jsonify({"summary": summary}), 200
     except Exception as e:
         logging.error(f"Error during summarization: {e}", exc_info=True)
         return jsonify({"error": "An error occurred during summarization."}), 500
+
 
 @app.route('/crawl_popular_terms', methods=['GET'])
 def get_popular_terms():
