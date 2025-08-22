@@ -106,6 +106,7 @@ public class NaverSearchService {
                 .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
                 .block();
 
+
         List<NaverSearchItemDto> list = new ArrayList<>();
         try {
             JsonNode root = objectMapper.readTree(json);
@@ -114,6 +115,7 @@ public class NaverSearchService {
                         item.path("title").asText(),
                         item.path("description").asText(),
                         item.path("link").asText(),
+                        item.path("originallink").asText(), // ★ 추가
                         type
                 ));
             }
