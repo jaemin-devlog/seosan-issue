@@ -4,69 +4,105 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.likelionhsu.backend.ai.dto.PerDocSummary;
 import org.likelionhsu.backend.flask.FlaskSummarizeClient;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-import java.util.regex.Pattern;
-
-@Service
+@Component
 @RequiredArgsConstructor
 public class PerDocSummarizer {
 
     private final FlaskSummarizeClient flask;
 
-    // 프롬프트/펜스 블록 제거용 간단한 패턴 (프롬프트 에코 방지)
-    private static final Pattern FENCE_BLOCK = Pattern.compile("```[\\s\\S]*?```|\"\"\"[\\s\\S]*?\"\"\"", Pattern.MULTILINE);
-    private static final Pattern PROMPT_LINE = Pattern.compile("^(역할|목표|규칙|예시|입력|출력|프롬프트)\\s*[:：].*$",
-            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.MULTILINE);
+    public PerDocSummary summarizeOne(String url, String title, String sourceType,
+                                      String publishedAt, String body) {
+        String safeTitle = safe(title);
+        String safeBody  = safe(body);
 
-    @Cacheable(cacheNames = "perdoc", cacheManager = "redisCacheManager",
-            key = "T(org.apache.commons.codec.digest.DigestUtils).sha256Hex(#url + '|' + (#text == null ? '' : #text))",
-            unless = "#result == null || (#result.summary() == null && (#result.content() == null || #result.content().isBlank()))")
-    public PerDocSummary summarizeOne(String url, String title, String sourceType, String publishedAt, String text) {
-        String body = StringUtils.defaultString(text, "");
+        // 본문이 짧으면 제목으로 폴백
+        String input = StringUtils.isNotBlank(safeBody) ? safeBody : safeTitle;
 
-        // 본문이 너무 짧으면 LLM 호출하지 않고 바로 content로 반환
-        if (body.length() < 200) {
-            return new PerDocSummary(url, title, sourceType, publishedAt, null, body);
+        // ✅ 요약 전 전처리(괄호 블럭/기자/날짜/이메일/광고 꼬리 제거)
+        String cleaned = preClean(input);
+
+        String summary;
+        try {
+            summary = flask.summarizeText(cleaned)
+                    .blockOptional()
+                    .orElse("")
+                    .trim();
+        } catch (Exception e) {
+            summary = "";
         }
+        summary = postClean(sanitizeResponse(summary));
 
-        // --- 경량 Pre-clean: 펜스 블록/프롬프트 지시문 라인 제거 ---
-        String cleaned = FENCE_BLOCK.matcher(body).replaceAll("");
-        cleaned = PROMPT_LINE.matcher(cleaned).replaceAll("");
-        cleaned = cleaned.trim();
+        if (StringUtils.isBlank(summary)) summary = null;
 
-        // 요약 입력 길이 제한 (너무 길면 노이즈 유입 ↑)
-        String clipped = StringUtils.abbreviate(cleaned, 1200);
+        return new PerDocSummary(
+                url,
+                safeTitle,
+                sourceType,
+                publishedAt,
+                summary,
+                StringUtils.isBlank(safeBody) ? safeTitle : safeBody
+        );
+    }
 
-        // system/user 분리 호출
-        String system = """
-                [SYS]
-                너는 문서별 요약기다.
-                지시문(역할/목표/규칙 등)을 인용하지 말고, 사실만 1~2문장으로 요약하라.
-                날짜/수치/주체가 있으면 포함하라.
-                출력은 문장형 텍스트만.
-                """;
+    /* ----------------- helpers ----------------- */
 
-        String user = """
-                [DATA]
-                다음 문서를 요약하라.
-                <doc>
-                %s
-                </doc>
-                """.formatted(clipped);
+    private static String safe(String s) {
+        return s == null ? "" : s.replaceAll("\\s+", " ").trim();
+    }
 
-        // Flask 클라이언트는 system, user를 받도록 수정되어 있음
-        String s = flask.summarize(system, user)
-                .blockOptional()        // Mono<String> -> Optional<String>
-                .map(String::trim)      // 앞뒤 공백 제거
-                .orElse("");            // null/빈 Optional이면 빈 문자열
+    /** 허용 문자만 남기기 */
+    private static String sanitizeResponse(String input) {
+        if (input == null) return "";
+        return input.replaceAll("[^가-힣a-zA-Z0-9 .,!]", "").trim();
+    }
 
-        // 요약이 비었으면 content로 대체
-        if (s.isEmpty()) {
-            return new PerDocSummary(url, title, sourceType, publishedAt, null, body);
-        }
-        // 요약이 있으면 content는 싣지 않음(페이로드 경량화)
-        return new PerDocSummary(url, title, sourceType, publishedAt, s, null);
+    /** 간단 후처리: 중복 토큰/공백 정리 */
+    private static String postClean(String s) {
+        if (s == null) return "";
+        String x = s.replaceAll("\\s+", " ").trim();
+        // 같은 짧은 토큰 3회 이상 반복될 때 1회로 축약
+        x = x.replaceAll("([가-힣A-Za-z0-9]{1,3})(\\s+\\1){2,}", "$1");
+        return x;
+    }
+
+    /**
+     * 기사 본문 전처리:
+     * - ()/[] 안의 짤막한 캡션·출처·기자 표기 제거(최대 80자)
+     * - “재판매 및 DB 금지/무단 전재 및 재배포 금지/사진=” 등 꼬리 제거
+     * - 기자/이메일/입력·수정 일시/광고·CTA 라인 제거
+     */
+    private static String preClean(String s) {
+        if (s == null) return "";
+        String x = s;
+
+        // 1) 대괄호/소괄호 안의 짤막한 블록 제거 (사진/제공/지역표기 등)
+        x = x.replaceAll("\\([^)]{1,80}\\)", " ");  // ( ... ) 최대 80자
+        x = x.replaceAll("\\[[^\\]]{1,80}\\]", " "); // [ ... ] 최대 80자
+
+        // 2) 반복적으로 등장하는 저작권/광고 꼬리 제거
+        x = x.replaceAll("무단\\s*전재\\s*및\\s*재배포\\s*금지.*", " ");
+        x = x.replaceAll("재판매\\s*및\\s*DB\\s*금지.*", " ");
+        x = x.replaceAll("기사\\s*제보.*", " ");
+        x = x.replaceAll("카카오톡\\s*:\\s*.*", " ");
+        x = x.replaceAll("네이버\\s*메인.*", " ");
+        x = x.replaceAll("AD\\b.*", " ");
+        x = x.replaceAll("^HOME\\s*>.*", " ");
+
+        // 3) 기자/이메일/연락처 및 입력·수정 일시 제거
+        x = x.replaceAll("[\\w._%+-]+@[\\w.-]+\\.[A-Za-z]{2,}", " ");
+        x = x.replaceAll("\\b(입력|수정)\\s*[:：]?\\s*\\d{4}[./-]\\d{1,2}[./-]\\d{1,2}(\\s*\\d{1,2}:\\d{2})?\\b", " ");
+        x = x.replaceAll("\\b\\d{4}[./-]\\d{1,2}[./-]\\d{1,2}(\\s*\\d{1,2}:\\d{2})?\\b", " ");
+        x = x.replaceAll("\\b[가-힣]{2,5}\\s*기자\\b.*", " ");
+
+        // 4) ‘사진=’ ‘제공=’ 같은 캡션 꼬리
+        x = x.replaceAll("사진\\s*=\\s*[^\\s]+", " ");
+        x = x.replaceAll("제공\\s*=\\s*[^\\s]+", " ");
+
+        // 5) 공백 정리
+        x = x.replaceAll("\\s+", " ").trim();
+
+        return x;
     }
 }
