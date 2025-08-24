@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 @ConfigurationProperties(prefix = "kma.api")
-@Component
 @Getter
 @Setter
 public class KmaApiConfig {
