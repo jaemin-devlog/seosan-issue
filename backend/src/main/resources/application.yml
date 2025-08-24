@@ -118,3 +118,6 @@ ai:
     top-p: 0.3
     repetition-penalty: 1.18
     max-tokens: 220       # 요구 길이 + 소폭 여유
+    min-length-threshold: 280   # 이 글자 수 이하이면 요약 스킵
+    enable-post-cleanup: true   # 요약 결과 후처리(노이즈/프롬프트 제거)
+    max-output-length: 600      # 결과 요약 상한(선택)
