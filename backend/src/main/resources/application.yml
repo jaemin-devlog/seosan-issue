@@ -60,9 +60,8 @@ kma:
       - { name: "동문2동", nx: 68, ny: 99 }
       - { name: "수석동", nx: 68, ny: 99 }
       - { name: "석남동", nx: 68, ny: 99 }
-    # 새로 추가: 도시 → 지역 그룹
     city-groups:
-      서산시:
+      seosan:
         - "해미면"
         - "대산읍"
         - "인지면"
@@ -77,7 +76,9 @@ kma:
         - "동문2동"
         - "수석동"
         - "석남동"
-        -
+
+
+
 crawler:
   api:
     url: ${CRAWLER_API_URL:http://localhost:5001}
