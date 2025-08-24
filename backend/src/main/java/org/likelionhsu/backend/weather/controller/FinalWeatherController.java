@@ -69,11 +69,19 @@ class WeatherApiDelegate {
     }
 
     public Mono<Map<String, Object>> getWeatherForCity(String kind, String city, String baseDate, String baseTime) {
-        final String trimmedCity = city.trim();
-        List<String> regions = kma.regionsOfCity(trimmedCity);
-        if (regions.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 도시 그룹입니다: " + trimmedCity);
+        String processedCity = city.trim();
+
+        // ★★★ 수정 지점: "서산시 전체"를 "서산시"로 처리 ★★★
+        if ("서산시 전체".equals(processedCity)) {
+            processedCity = "서산시";
         }
+
+        List<String> regions = kma.regionsOfCity(processedCity);
+        if (regions.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 도시 그룹입니다: " + processedCity);
+        }
+
+        final String finalCityName = processedCity; // 람다에서 사용하기 위해 final 변수로 선언
 
         Map<String, Integer> orderMap = new HashMap<>();
         for (int i = 0; i < regions.size(); i++) {
@@ -86,7 +94,7 @@ class WeatherApiDelegate {
                 .map(results -> {
                     results.sort(Comparator.comparingInt(r -> orderMap.getOrDefault((String) r.get("region"), Integer.MAX_VALUE)));
                     return Map.of(
-                            "city", trimmedCity,
+                            "city", finalCityName,
                             "count", results.size(),
                             "results", results
                     );
@@ -94,7 +102,11 @@ class WeatherApiDelegate {
     }
 
     public Mono<Map<String, Object>> getWeatherForRegion(String kind, String region, String baseDate, String baseTime) {
-        return callKmaAndMapIcon(kind, region.trim(), baseDate, baseTime);
+        String processedRegion = region.trim();
+        if ("서산시".equals(processedRegion)) {
+            processedRegion = "서산시 전체"; // alias 처리
+        }
+        return callKmaAndMapIcon(kind, processedRegion, baseDate, baseTime);
     }
 
     private Mono<Map<String, Object>> callKmaAndMapIcon(String kind, String region, String baseDate, String baseTime) {
@@ -196,7 +208,6 @@ class WeatherApiDelegate {
                 }
             }
 
-            // ★★★ 수정 지점: 온도, 습도 등 모든 정보를 담을 변수 선언 ★★★
             String pty = null, sky = null, rn1 = null, t1h = null;
             String reh = null, wsd = null, vec = null;
 
@@ -210,19 +221,18 @@ class WeatherApiDelegate {
                     if (!Objects.equals(targetDate, d) || !Objects.equals(targetTime, t)) continue;
                 }
                 switch (cat) {
-                    case "PTY" -> pty = val; // 강수형태
-                    case "SKY" -> sky = val; // 하늘상태
-                    case "RN1" -> rn1 = val; // 1시간 강수량
-                    case "T1H" -> t1h = val; // 기온
-                    case "REH" -> reh = val; // 습도
-                    case "WSD" -> wsd = val; // 풍속
-                    case "VEC" -> vec = val; // 풍향
+                    case "PTY" -> pty = val;
+                    case "SKY" -> sky = val;
+                    case "RN1" -> rn1 = val;
+                    case "T1H" -> t1h = val;
+                    case "REH" -> reh = val;
+                    case "WSD" -> wsd = val;
+                    case "VEC" -> vec = val;
                 }
             }
 
             String condition = mapIcon(pty, sky, rn1, t1h);
 
-            // ★★★ 수정 지점: 모든 상세 정보를 Map에 담아 반환 ★★★
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("condition", condition);
             result.put("conditionCode", toConditionCode(condition));
@@ -266,7 +276,6 @@ class WeatherApiDelegate {
         }
     }
 
-    // ★★★ 추가된 헬퍼 메서드 ★★★
     private static String windDirToText(String vec) {
         if (vec == null) return null;
         try {
@@ -274,6 +283,15 @@ class WeatherApiDelegate {
             String[] dirs = {"북", "북북동", "북동", "동북동", "동", "동남동", "남동", "남남동", "남", "남남서", "남서", "서남서", "서", "서북서", "북서", "북북서"};
             return dirs[(int) Math.round(((deg % 360) / 22.5)) % 16] + "풍";
         } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Double parseDouble(String s) {
+        if (s == null || s.isBlank() || "N/A".equalsIgnoreCase(s)) return null;
+        try {
+            return Double.parseDouble(s);
+        } catch (Exception e) {
             return null;
         }
     }
@@ -295,13 +313,4 @@ class WeatherApiDelegate {
         if (hour < 0) hour = 23;
         return String.format("%02d00", hour);
     }
-    private static Double parseDouble(String s) {
-        if (s == null) return null;
-        try {
-            return Double.parseDouble(s.replaceAll("[^0-9.\\-]", ""));
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
 }
