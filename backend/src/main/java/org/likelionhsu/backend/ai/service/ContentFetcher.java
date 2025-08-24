@@ -16,14 +16,14 @@ public class ContentFetcher {
 
     public ArticleText fetch(String url) {
         try {
-            Connection conn = Jsoup.connect(url)
+            String resolved = rewriteForBlog(url);
+
+            Connection conn = Jsoup.connect(resolved)
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                             + "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-                    .referrer("https://www.google.com/")
-                    .header("Accept-Language", "ko-KR,ko;q=0.9")
-                    .followRedirects(true)
-                    .ignoreHttpErrors(true)
+                    .referrer("https://www.google.com")
                     .ignoreContentType(true)
+                    .ignoreHttpErrors(true)
                     .maxBodySize(0)
                     .timeout(15000)
                     .method(Connection.Method.GET);
@@ -37,35 +37,31 @@ public class ContentFetcher {
             int rawLen = res.bodyAsBytes() != null ? res.bodyAsBytes().length : -1;
 
             if (VERBOSE) {
-                log.info("[FETCH] {} -> status={} ct={} bytes={} {}ms", url, status, ctype, rawLen, ms);
+                log.info("[FETCH] {} -> status={} ct={} bytes={} {}ms (resolved={})", url, status, ctype, rawLen, ms, resolved);
             }
 
             Document doc = res.parse();
             String title = safe(doc.title());
 
             // 1) 알려진 셀렉터들 시도 + 각 길이 로깅
-            String text = selectBestKnownWithDebug(doc);
+            String text = selectBestKnownWithDebug(doc, resolved);
 
             // 2) 그래도 짧으면 가장 긴 텍스트 블록(간이 readability)
             if (isShort(text)) {
                 String largest = pickLargestTextBlock(doc);
-                if (VERBOSE) log.debug("[FETCH] {} largestBlock len={}", url, largest.length());
+                if (VERBOSE) log.debug("[FETCH] {} largestBlock len={}", resolved, largest.length());
                 if (largest.length() > text.length()) text = largest;
             }
 
             // 3) 마지막 보조: body 전체
-            if (isShort(text) && doc.body() != null) {
-                String bodyAll = doc.body().text();
-                if (VERBOSE) log.debug("[FETCH] {} bodyAll len={}", url, bodyAll.length());
+            if (isShort(text)) {
+                String bodyAll = safe(doc.body() != null ? doc.body().text() : "");
+                if (VERBOSE) log.debug("[FETCH] {} bodyAll len={}", resolved, bodyAll.length());
                 if (bodyAll.length() > text.length()) text = bodyAll;
             }
 
             text = clean(text);
-
-            if (VERBOSE) {
-                log.info("[FETCH] {} final len={} sample=\"{}\"",
-                        url, text.length(), sample(text, 120));
-            }
+            if (VERBOSE) log.info("[FETCH] {} final len={} sample={}", resolved, text.length(), sample(text, 120));
 
             return new ArticleText(url, title, text, null);
         } catch (Exception e) {
@@ -74,19 +70,49 @@ public class ContentFetcher {
         }
     }
 
-    private String selectBestKnownWithDebug(Document doc) {
+    /** 네이버블로그/티스토리는 모바일 뷰로 치환하면 정적 HTML 본문이 잘 잡힘 */
+    private String rewriteForBlog(String url) {
+        try {
+            String lower = url.toLowerCase();
+
+            // 네이버 블로그: blog.naver.com → m.blog.naver.com
+            if (lower.contains("://blog.naver.com/")) {
+                return url.replace("://blog.naver.com/", "://m.blog.naver.com/");
+            }
+            // 티스토리: ?m=1 붙이면 정적 HTML
+            if (lower.contains("tistory.com")) {
+                if (url.contains("?")) {
+                    return url.contains("m=1") ? url : url + "&m=1";
+                } else {
+                    return url + "?m=1";
+                }
+            }
+            return url;
+        } catch (Exception ignore) {
+            return url;
+        }
+    }
+
+    private String selectBestKnownWithDebug(Document doc, String url) {
         String best = "";
         int bestLen = 0;
 
-        // 네이버/언론사 커버 셀렉터들
+        // 네이버/언론사 + 블로그 전용 컨테이너
         String[] selectors = new String[]{
                 // 네이버 뉴스(신규/모바일/구형)
                 "#newsct_article", "#dic_area", "#newsEndContents", "#articleBodyContents",
-                // 자주 보이는 언론사 컨테이너들
+                // 언론사 일반
                 "article", "#articeBody", ".article_body", ".articleBody", ".article-body",
                 ".article-view", ".news_end", "#article", "#contents", ".news_body_area",
                 ".text_body", ".news_content", ".view_cont", "#news-view", "#CmAdContent",
-                ".content-article", ".art_text", "#textBody", ".cont_area"
+                ".content-article", ".art_text", "#textBody", ".cont_area",
+
+                // ✅ 네이버 블로그(모바일)
+                "#post-view", "#postViewArea", "div.se-main-container", "div.se_component_wrap",
+                "div#_post_view", "div#contents_layer",
+                // ✅ 티스토리
+                "div.article_view", "div#content", "div#contents", "div.tt_article_useless_p_margin",
+                "div.entry-content", "div#article", "article.post"
         };
 
         for (String sel : selectors) {
@@ -97,7 +123,8 @@ public class ContentFetcher {
                 t = safe(el.text());
                 len = t.length();
             }
-            log.debug("[FETCH][SEL] {} -> len={}", sel, len);
+            if (VERBOSE) log.debug("[FETCH] sel='{}' len={}", sel, len);
+
             if (len > bestLen) {
                 bestLen = len;
                 best = t;
@@ -136,7 +163,9 @@ public class ContentFetcher {
                 .replace("&amp;", "&")
                 .replaceAll("\\s+", " ")
                 .trim();
-        // 흔한 저작권/광고 꼬리 제거(있으면)
+
+        // 흔한 꼬리 문구/광고/저작권 고지 제거(과하게 지우지 않도록 짧은 패턴 위주)
+        x = x.replaceAll("재판매 및 DB 금지", "");
         x = x.replaceAll("무단\\s*전재\\s*및\\s*재배포\\s*금지.*$", "");
         return x;
     }
