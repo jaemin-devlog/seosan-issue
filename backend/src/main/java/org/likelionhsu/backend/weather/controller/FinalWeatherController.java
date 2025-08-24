@@ -69,19 +69,17 @@ class WeatherApiDelegate {
     }
 
     public Mono<Map<String, Object>> getWeatherForCity(String kind, String city, String baseDate, String baseTime) {
-        String processedCity = city.trim();
+        String processedCityKey = city.trim();
 
-        // ★★★ 수정 지점: "서산시 전체"를 "서산시"로 처리 ★★★
-        if ("서산시 전체".equals(processedCity)) {
-            processedCity = "서산시";
+        // ★★★ 수정 지점: 한글 도시 이름을 yml의 영문 키(seosan)로 매핑 ★★★
+        if ("서산시".equals(processedCityKey) || "서산시 전체".equals(processedCityKey)) {
+            processedCityKey = "seosan";
         }
 
-        List<String> regions = kma.regionsOfCity(processedCity);
+        List<String> regions = kma.regionsOfCity(processedCityKey);
         if (regions.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 도시 그룹입니다: " + processedCity);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 도시 그룹입니다: " + city.trim());
         }
-
-        final String finalCityName = processedCity; // 람다에서 사용하기 위해 final 변수로 선언
 
         Map<String, Integer> orderMap = new HashMap<>();
         for (int i = 0; i < regions.size(); i++) {
@@ -94,7 +92,7 @@ class WeatherApiDelegate {
                 .map(results -> {
                     results.sort(Comparator.comparingInt(r -> orderMap.getOrDefault((String) r.get("region"), Integer.MAX_VALUE)));
                     return Map.of(
-                            "city", finalCityName,
+                            "city", city.trim(), // 응답에는 원래 요청한 한글 도시 이름을 보여줌
                             "count", results.size(),
                             "results", results
                     );
@@ -102,13 +100,10 @@ class WeatherApiDelegate {
     }
 
     public Mono<Map<String, Object>> getWeatherForRegion(String kind, String region, String baseDate, String baseTime) {
-        String processedRegion = region.trim();
-        if ("서산시".equals(processedRegion)) {
-            processedRegion = "서산시 전체"; // alias 처리
-        }
-        return callKmaAndMapIcon(kind, processedRegion, baseDate, baseTime);
+        return callKmaAndMapIcon(kind, region.trim(), baseDate, baseTime);
     }
 
+    // ... (이하 다른 메서드들은 이전과 동일)
     private Mono<Map<String, Object>> callKmaAndMapIcon(String kind, String region, String baseDate, String baseTime) {
         var rc = kma.findByName(region)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 지역입니다: " + region));
