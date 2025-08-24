@@ -19,7 +19,8 @@ public class CorsConfig {
                                 "https://seosan-issue.web.app",
                                 "https://seosan-issue.firebaseapp.com",
                                 "http://localhost:3000",
-                                "http://127.0.0.1:3000"
+                                "http://127.0.0.1:3000",
+                                "https://seosan-issue-79873.web.app"
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                         .allowedHeaders("*")
