@@ -34,7 +34,6 @@ public class WeatherService {
     private final ObjectMapper objectMapper;
     private final KmaApiConfig kmaApiConfig;
 
-    // ★ 생성자 파라미터에 Qualifier 명시
     public WeatherService(
             ObjectMapper objectMapper,
             KmaApiConfig kmaApiConfig,
@@ -56,6 +55,7 @@ public class WeatherService {
         private final Map<String, String> dataMap;
     }
 
+    /** 도시 단위 카드 묶음 조회 */
     public WeatherCardsResponse getCardsByCity(String city) {
         var coords = Optional.ofNullable(kmaApiConfig.getGridCoords())
                 .filter(list -> !list.isEmpty())
@@ -80,10 +80,18 @@ public class WeatherService {
                     .toList();
 
             LocalDateTime now = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Seoul")).toLocalDateTime();
+            String baseDate = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            String baseTime = ncstBaseTime(now)[0];
+
+            // ✅ 자정 보정
+            if (now.getHour() == 0 && "2300".equals(baseTime)) {
+                baseDate = now.minusDays(1).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            }
+
             return WeatherCardsResponse.builder()
                     .city(city)
-                    .baseDate(now.format(DateTimeFormatter.ofPattern("yyyyMMdd")))
-                    .baseTime(ncstBaseTime(now)[0]) // 대표 시각
+                    .baseDate(baseDate)
+                    .baseTime(baseTime)
                     .cards(cards)
                     .build();
         } finally {
@@ -91,6 +99,7 @@ public class WeatherService {
         }
     }
 
+    /** 개별 지역 카드 생성 */
     private WeatherCardDto buildCard(String region) {
         RegionCoordinate coord = kmaApiConfig.getGridCoords().stream()
                 .filter(c -> c.getName().equals(region))
@@ -99,11 +108,17 @@ public class WeatherService {
 
         LocalDateTime now = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Seoul")).toLocalDateTime();
         String baseDate = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String baseTime = ncstBaseTime(now)[0];
+
+        // ✅ 자정 보정
+        if (now.getHour() == 0 && "2300".equals(baseTime)) {
+            baseDate = now.minusDays(1).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        }
 
         // 1) 초단기실황 (폴백 적용)
         KmaResponse ncstRes = null;
-        for (String baseTime : ncstBaseTime(now)) {
-            ncstRes = callKma(NCST_PATH, baseDate, baseTime, coord.getNx(), coord.getNy(), true);
+        for (String bt : ncstBaseTime(now)) {
+            ncstRes = callKma(NCST_PATH, baseDate, bt, coord.getNx(), coord.getNy(), true);
             if ("00".equals(ncstRes.getResultCode()) && ncstRes.getItems().size() > 0) break;
         }
         if (ncstRes == null || !"00".equals(ncstRes.getResultCode())) {
@@ -113,8 +128,8 @@ public class WeatherService {
 
         // 2) 초단기예보 (폴백 적용)
         KmaResponse fcstRes = null;
-        for (String baseTime : fcstBaseTime(now)) {
-            fcstRes = callKma(FCST_PATH, baseDate, baseTime, coord.getNx(), coord.getNy(), false);
+        for (String bt : fcstBaseTime(now)) {
+            fcstRes = callKma(FCST_PATH, baseDate, bt, coord.getNx(), coord.getNy(), false);
             if ("00".equals(fcstRes.getResultCode()) && fcstRes.getItems().size() > 0) break;
         }
         if (fcstRes == null || !"00".equals(fcstRes.getResultCode())) {
@@ -122,6 +137,7 @@ public class WeatherService {
         }
         Map<String, String> fcst = fcstRes.getDataMap();
 
+        // 상태값 파싱
         String pty = fcst.getOrDefault("PTY", obs.get("PTY"));
         String sky = fcst.get("SKY");
         String condition = resolveCondition(pty, sky);
@@ -139,6 +155,7 @@ public class WeatherService {
                 .build();
     }
 
+    /** 실황 기준 baseTime 후보 */
     private String[] ncstBaseTime(LocalDateTime now) {
         int h = now.getHour(), m = now.getMinute();
         String s1 = String.format("%02d00", (m < 40) ? (h + 23) % 24 : h);
@@ -146,6 +163,7 @@ public class WeatherService {
         return new String[]{s1, s2};
     }
 
+    /** 예보 기준 baseTime 후보 */
     private String[] fcstBaseTime(LocalDateTime now) {
         int h = now.getHour(), m = now.getMinute();
         String s1 = (m >= 45) ? String.format("%02d30", h) : String.format("%02d00", h);
@@ -159,8 +177,8 @@ public class WeatherService {
         return new String[]{s1, s2, s3};
     }
 
+    /** KMA API 호출 */
     private KmaResponse callKma(String path, String baseDate, String baseTime, int nx, int ny, boolean isNcst) {
-        // kma.api.base-url + /{path}
         URI uri = org.springframework.web.util.UriComponentsBuilder
                 .fromUriString(kmaApiConfig.getBaseUrl())
                 .path("/" + path)
@@ -231,6 +249,7 @@ public class WeatherService {
                 || t instanceof java.util.concurrent.TimeoutException;
     }
 
+    /** 날씨 조건 문자열 */
     private static String resolveCondition(String pty, String sky) {
         if (pty != null && !"0".equals(pty)) {
             return switch (pty) {
@@ -242,6 +261,7 @@ public class WeatherService {
         return "1".equals(sky) ? "맑음" : "흐림";
     }
 
+    /** 풍향 degree → 텍스트 */
     private String windDirToText(String vec) {
         if (vec == null) return null;
         try {
