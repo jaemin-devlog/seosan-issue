@@ -55,14 +55,21 @@ public class FinalWeatherController {
 
 @Component
 @Slf4j
-@RequiredArgsConstructor
+// @RequiredArgsConstructor를 제거하고 직접 생성자를 작성합니다.
 class WeatherApiDelegate {
 
-    @Qualifier("externalWebClient")
     private final WebClient web;
     private final KmaApiConfig kma;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+    // ★★★ 에러 해결 지점 ★★★
+    // Lombok이 만들던 생성자를 직접 만들고, WebClient 파라미터에 @Qualifier를 붙여줍니다.
+    public WeatherApiDelegate(@Qualifier("externalWebClient") WebClient web, KmaApiConfig kma, ObjectMapper mapper) {
+        this.web = web;
+        this.kma = kma;
+        this.mapper = mapper;
+    }
 
     public Mono<Map<String, Object>> getWeatherForCity(String kind, String city, String baseDate, String baseTime) {
         List<String> regions = kma.regionsOfCity(city);
