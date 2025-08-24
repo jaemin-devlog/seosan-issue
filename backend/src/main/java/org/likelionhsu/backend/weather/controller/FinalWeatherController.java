@@ -55,7 +55,6 @@ public class FinalWeatherController {
 
 @Component
 @Slf4j
-// @RequiredArgsConstructor를 제거하고 직접 생성자를 작성합니다.
 class WeatherApiDelegate {
 
     private final WebClient web;
@@ -63,8 +62,6 @@ class WeatherApiDelegate {
     private final ObjectMapper mapper;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
-    // ★★★ 에러 해결 지점 ★★★
-    // Lombok이 만들던 생성자를 직접 만들고, WebClient 파라미터에 @Qualifier를 붙여줍니다.
     public WeatherApiDelegate(@Qualifier("externalWebClient") WebClient web, KmaApiConfig kma, ObjectMapper mapper) {
         this.web = web;
         this.kma = kma;
@@ -72,9 +69,10 @@ class WeatherApiDelegate {
     }
 
     public Mono<Map<String, Object>> getWeatherForCity(String kind, String city, String baseDate, String baseTime) {
-        List<String> regions = kma.regionsOfCity(city);
+        final String trimmedCity = city.trim();
+        List<String> regions = kma.regionsOfCity(trimmedCity);
         if (regions.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 도시 그룹입니다: " + city);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 도시 그룹입니다: " + trimmedCity);
         }
 
         Map<String, Integer> orderMap = new HashMap<>();
@@ -88,7 +86,7 @@ class WeatherApiDelegate {
                 .map(results -> {
                     results.sort(Comparator.comparingInt(r -> orderMap.getOrDefault((String) r.get("region"), Integer.MAX_VALUE)));
                     return Map.of(
-                            "city", city,
+                            "city", trimmedCity,
                             "count", results.size(),
                             "results", results
                     );
@@ -96,14 +94,13 @@ class WeatherApiDelegate {
     }
 
     public Mono<Map<String, Object>> getWeatherForRegion(String kind, String region, String baseDate, String baseTime) {
-        return callKmaAndMapIcon(kind, region, baseDate, baseTime);
+        return callKmaAndMapIcon(kind, region.trim(), baseDate, baseTime);
     }
 
     private Mono<Map<String, Object>> callKmaAndMapIcon(String kind, String region, String baseDate, String baseTime) {
         var rc = kma.findByName(region)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 지역입니다: " + region));
 
-        // --- 시간 자동 계산 로직 ---
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
 
         boolean isTimeAutoCalculated = false;
@@ -116,11 +113,9 @@ class WeatherApiDelegate {
             isTimeAutoCalculated = true;
         }
 
-        // 자정 보정 (자동 계산 시에만 적용)
         if (isTimeAutoCalculated && now.getHour() == 0 && "2300".equals(baseTime)) {
             baseDate = now.minusDays(1).format(DATE_FORMATTER);
         }
-        // --- 시간 자동 계산 로직 끝 ---
 
         String endpoint = switch (kind) {
             case "ncst" -> "/getUltraSrtNcst";
@@ -201,7 +196,10 @@ class WeatherApiDelegate {
                 }
             }
 
+            // ★★★ 수정 지점: 온도, 습도 등 모든 정보를 담을 변수 선언 ★★★
             String pty = null, sky = null, rn1 = null, t1h = null;
+            String reh = null, wsd = null, vec = null;
+
             for (JsonNode it : items) {
                 String cat = it.path("category").asText();
                 String val = it.has("obsrValue") ? it.path("obsrValue").asText() : it.path("fcstValue").asText();
@@ -212,18 +210,29 @@ class WeatherApiDelegate {
                     if (!Objects.equals(targetDate, d) || !Objects.equals(targetTime, t)) continue;
                 }
                 switch (cat) {
-                    case "PTY" -> pty = val;
-                    case "SKY" -> sky = val;
-                    case "RN1" -> rn1 = val;
-                    case "T1H" -> t1h = val;
+                    case "PTY" -> pty = val; // 강수형태
+                    case "SKY" -> sky = val; // 하늘상태
+                    case "RN1" -> rn1 = val; // 1시간 강수량
+                    case "T1H" -> t1h = val; // 기온
+                    case "REH" -> reh = val; // 습도
+                    case "WSD" -> wsd = val; // 풍속
+                    case "VEC" -> vec = val; // 풍향
                 }
             }
 
             String condition = mapIcon(pty, sky, rn1, t1h);
-            return Map.of(
-                    "condition", condition,
-                    "conditionCode", toConditionCode(condition)
-            );
+
+            // ★★★ 수정 지점: 모든 상세 정보를 Map에 담아 반환 ★★★
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("condition", condition);
+            result.put("conditionCode", toConditionCode(condition));
+            if (t1h != null) result.put("temperature", parseDouble(t1h));
+            if (reh != null) result.put("humidity", parseDouble(reh));
+            if (wsd != null) result.put("windSpeed", parseDouble(wsd));
+            if (vec != null) result.put("windDirection", windDirToText(vec));
+
+            return result;
+
         } catch (Exception e) {
             log.error("KMA 응답 파싱 실패", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "KMA 응답 처리 중 오류가 발생했습니다.");
@@ -257,6 +266,18 @@ class WeatherApiDelegate {
         }
     }
 
+    // ★★★ 추가된 헬퍼 메서드 ★★★
+    private static String windDirToText(String vec) {
+        if (vec == null) return null;
+        try {
+            double deg = Double.parseDouble(vec);
+            String[] dirs = {"북", "북북동", "북동", "동북동", "동", "동남동", "남동", "남남동", "남", "남남서", "남서", "서남서", "서", "서북서", "북서", "북북서"};
+            return dirs[(int) Math.round(((deg % 360) / 22.5)) % 16] + "풍";
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private String getBaseTimeForNcst(LocalDateTime now) {
         int hour = now.getHour();
         if (now.getMinute() < 40) {
@@ -274,4 +295,13 @@ class WeatherApiDelegate {
         if (hour < 0) hour = 23;
         return String.format("%02d00", hour);
     }
+    private static Double parseDouble(String s) {
+        if (s == null) return null;
+        try {
+            return Double.parseDouble(s.replaceAll("[^0-9.\\-]", ""));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
 }
