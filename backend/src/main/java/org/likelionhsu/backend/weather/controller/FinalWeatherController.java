@@ -137,13 +137,14 @@ class WeatherApiDelegate {
                 .path(endpoint)
                 .queryParam("serviceKey", kma.getServiceKey())
                 .queryParam("dataType", "JSON")
-                .queryParam("numOfRows", 1000)
+                .queryParam("numOfRows", 500) // ← 안전하게 500으로 줄임
                 .queryParam("pageNo", 1)
                 .queryParam("base_date", requestDate)
                 .queryParam("base_time", requestTime)
                 .queryParam("nx", rc.getNx())
                 .queryParam("ny", rc.getNy())
-                .build(true).toUri();
+                .build(false)   // ★ 인코딩 방지 (이중 인코딩 막기)
+                .toUri();
 
         return web.get().uri(uri)
                 .retrieve()
@@ -153,7 +154,14 @@ class WeatherApiDelegate {
                                         "KMA HTTP " + resp.statusCode().value() + " " + body))
                 )
                 .bodyToMono(String.class)
-                .map(this::parseAndMapIcon)
+                .map(body -> {
+                    if (body.trim().startsWith("<")) {   // ★ HTML fallback 처리
+                        log.error("KMA returned HTML instead of JSON: {}",
+                                body.substring(0, Math.min(200, body.length())));
+                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "KMA 비JSON 응답 (HTML)");
+                    }
+                    return parseAndMapIcon(body);
+                })
                 .map(iconInfo -> {
                     Map<String, Object> result = new LinkedHashMap<>(iconInfo);
                     result.put("region", region);
@@ -168,6 +176,7 @@ class WeatherApiDelegate {
                     return Mono.just(Map.of("region", region, "error", "데이터를 가져올 수 없습니다."));
                 });
     }
+
 
     private Map<String, Object> parseAndMapIcon(@NonNull String json) {
         try {
