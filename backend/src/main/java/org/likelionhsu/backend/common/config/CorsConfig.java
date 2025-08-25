@@ -14,11 +14,15 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOriginPatterns("*")   // 모든 Origin 허용
-                        .allowedMethods("*")          // 모든 메서드 허용
-                        .allowedHeaders("*")          // 모든 헤더 허용
-                        .allowCredentials(false)      // 세션/쿠키 필요 없으니 false
-                        .maxAge(86400);               // 24시간 캐싱
+                        .allowedOrigins(
+                                "https://seosan-issue.web.app",
+                                "http://localhost:3000",    // 로컬 개발용
+                                "http://127.0.0.1:3000"     // 로컬 개발용
+                        )
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(false)
+                        .maxAge(86400);
             }
         };
     }
