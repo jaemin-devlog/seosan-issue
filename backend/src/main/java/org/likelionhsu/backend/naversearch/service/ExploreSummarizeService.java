@@ -41,13 +41,28 @@ public class ExploreSummarizeService {
             var terms = quickTermsFromUrlOrTitle(url, title);
 
             String host = SourceDomainPolicy.host(url);
-            if (!ContentQualityGate.pass(title, body, terms, host)) {
-                log.info("[Explore] quality gate fail: host={}, len={}", host, body.length());
+            var reason = ContentQualityGate.check(title, body, terms, host);
+            if (reason != ContentQualityGate.FailReason.OK) {
+                int bodyLen = body == null ? 0 : body.length();
+                log.info("[Explore] quality gate fail: reason={}, host={}, len={}, url={}", reason, host, bodyLen, url);
                 return null;
             }
 
+            // publishedAt: ArticleText에서 먼저 시도, 없으면 URL에서 추정
+            Instant publishedAtInstant = extractPublishedAt(page);
+            if (publishedAtInstant == null) {
+                String publishedAtStr = extractPublishedAtStr(url);
+                if (publishedAtStr != null) {
+                    try {
+                        publishedAtInstant = Instant.parse(publishedAtStr + "T00:00:00Z");
+                    } catch (Exception ignore) { /* 파싱 실패 시 null 유지 */ }
+                }
+            }
+
             var one = perDocSummarizer.summarizeOne(
-                    url, title, "external", extractPublishedAtStr(url), body
+                    url, title, "external",
+                    publishedAtInstant != null ? publishedAtInstant.toString() : null,
+                    body
             );
             if (one == null || org.apache.commons.lang3.StringUtils.isBlank(one.summary())) {
                 log.info("[Explore] per-doc summarize empty: {}", url);
@@ -59,7 +74,7 @@ public class ExploreSummarizeService {
                     .title(title)
                     .summary(one.summary())
                     .sourceType("external")
-                    .publishedAt(null)
+                    .publishedAt(publishedAtInstant) // ✅ Instant 타입 맞게
                     .build();
 
         } catch (Exception e) { // IOException 포함
@@ -67,7 +82,6 @@ public class ExploreSummarizeService {
             return null;
         }
     }
-
 
     private static Set<String> quickTermsFromUrlOrTitle(String url, String title) {
         String seed = (title == null ? "" : title) + " " + (url == null ? "" : url);
@@ -83,7 +97,7 @@ public class ExploreSummarizeService {
     }
 
     private static Instant extractPublishedAt(org.likelionhsu.backend.ai.dto.ArticleText at) {
-        // ArticleText에 publishedAt이 없으면 null 반환 (2단계에서 파서 붙일 수 있음)
+        // ArticleText에 publishedAt이 없으면 null 반환 (레거시 호환: 리플렉션)
         try {
             var f = at.getClass().getDeclaredField("publishedAt");
             f.setAccessible(true);
@@ -110,5 +124,4 @@ public class ExploreSummarizeService {
 
         return y + "-" + mm + "-" + dd; // e.g., 2025-08-16
     }
-
 }
