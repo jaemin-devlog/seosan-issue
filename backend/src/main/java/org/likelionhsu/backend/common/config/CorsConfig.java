@@ -14,17 +14,11 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        // 프론트 오리진만 명시
-                        .allowedOrigins(
-                                "https://seosan-issue.web.app",
-                                "https://seosan-issue.firebaseapp.com",
-                                "http://localhost:3000",
-                                "http://127.0.0.1:3000"
-                        )
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-                        .allowedHeaders("*")
-                        .allowCredentials(false)     // 로그인/쿠키/세션 없으니 false
-                        .maxAge(86400);              // 프리플라이트 캐시 (24h)
+                        .allowedOriginPatterns("*")   // 모든 Origin 허용
+                        .allowedMethods("*")          // 모든 메서드 허용
+                        .allowedHeaders("*")          // 모든 헤더 허용
+                        .allowCredentials(false)      // 세션/쿠키 필요 없으니 false
+                        .maxAge(86400);               // 24시간 캐싱
             }
         };
     }

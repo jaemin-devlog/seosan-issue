@@ -17,13 +17,16 @@ public class ExploreSummarizeDtos {
         private List<String> urls;
     }
 
-    @Builder @Getter
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ItemSummaryResponse {
         private String url;
         private String title;
-        private String summary;      // ✅ 요약만 노출 (본문 금지)
-        private String sourceType;   // "external" | "internal"
-        private Instant publishedAt; // 있을 때만
+        private String summary;
+        private String sourceType;
+        private Instant publishedAt;
     }
 
     @Builder @Getter
