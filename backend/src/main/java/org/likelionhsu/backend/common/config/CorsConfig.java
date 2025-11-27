@@ -17,6 +17,7 @@ public class CorsConfig {
                         .allowedOrigins(
                                 "https://seosan-issue.web.app",
                                 "http://localhost:3000",    // 로컬 개발용
+                                "http://localhost:3001",
                                 "http://127.0.0.1:3000"     // 로컬 개발용
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
