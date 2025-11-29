@@ -4,6 +4,7 @@ pandas
 lxml
 openpyxl
 flask
+flask-cors
 gunicorn
 mysql-connector-python
 pytest

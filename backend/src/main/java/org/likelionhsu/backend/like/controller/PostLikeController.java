@@ -17,16 +17,14 @@ public class PostLikeController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Void> likePost(@PathVariable Long postId,
-                                         @AuthenticationPrincipal UserDetailsImpl userDetails) {
+    public ResponseEntity<Void> likePost(@PathVariable Long postId, @AuthenticationPrincipal UserDetailsImpl userDetails) {
         postLikeService.likePost(postId, userDetails.getUser());
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Void> unlikePost(@PathVariable Long postId,
-                                           @AuthenticationPrincipal UserDetailsImpl userDetails) {
+    public ResponseEntity<Void> unlikePost(@PathVariable Long postId, @AuthenticationPrincipal UserDetailsImpl userDetails) {
         postLikeService.unlikePost(postId, userDetails.getUser());
         return ResponseEntity.noContent().build();
     }

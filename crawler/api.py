@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from src.crawlers.seosan_city_crawler import crawl_all_pages
 from src.crawlers.seosan_popular_search_crawler import crawl_popular_search_terms
 from src.database import init_db, get_content_statistics
@@ -14,6 +15,9 @@ import os
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
+
+# CORS 설정 - 모든 origin에서 접근 허용
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # 애플리케이션 시작 시 데이터베이스 초기화
 with app.app_context():
