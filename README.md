@@ -4,6 +4,15 @@
 
 ---
 
+## 📚 API 문서
+
+- **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - 전체 API 명세서 (인증, 북마크, 좋아요, 댓글)
+- **[API_REQUEST_EXAMPLES.md](./API_REQUEST_EXAMPLES.md)** - 상세한 API 요청 예시 (cURL, JavaScript, Python, React)
+- **[Seosan_Issue_API.postman_collection.json](./Seosan_Issue_API.postman_collection.json)** - Postman Collection (Import하여 바로 테스트)
+- **[test_api.ps1](./test_api.ps1)** - PowerShell 자동 테스트 스크립트
+
+---
+
 ## ⚡️ TL;DR (빠른 실행)
 
 ### 1) Docker Compose로 원커맨드 실행

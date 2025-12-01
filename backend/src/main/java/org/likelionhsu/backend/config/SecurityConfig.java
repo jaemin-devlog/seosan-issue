@@ -35,7 +35,6 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/api/posts/**",
-                                "/api/weather/**",
                                 "/api/naver-search/**",
                                 "/api/flask/**",
                                 "/api/v1/**"
