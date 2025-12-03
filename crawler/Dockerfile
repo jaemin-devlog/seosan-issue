@@ -8,7 +8,7 @@ ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1
 
 # 시스템 패키지 (lxml 등 네이티브 의존 대비)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update --allow-releaseinfo-change && apt-get install -y --no-install-recommends \
       curl ca-certificates \
       libxml2 libxslt1.1 \
     && rm -rf /var/lib/apt/lists/*

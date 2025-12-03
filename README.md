@@ -11,17 +11,17 @@
 - **[Seosan_Issue_API.postman_collection.json](./Seosan_Issue_API.postman_collection.json)** - Postman Collection (Import하여 바로 테스트)
 - **[test_api.ps1](./test_api.ps1)** - PowerShell 자동 테스트 스크립트
 
----
+## 📖 백엔드 상세 문서
 
-## ⚡️ TL;DR (빠른 실행)
+- **[00_ARCHITECTURE_OVERVIEW.md](./docs/backend/00_ARCHITECTURE_OVERVIEW.md)** - 전체 아키텍처 개요
+- **[01_POST_PACKAGE.md](./docs/backend/01_POST_PACKAGE.md)** - 게시글 도메인 (조회, 필터링)
+- **[02_USER_PACKAGE.md](./docs/backend/02_USER_PACKAGE.md)** - 사용자 인증 및 회원 관리
+- **[03_JWT_PACKAGE.md](./docs/backend/03_JWT_PACKAGE.md)** - JWT 토큰 생성/검증
+- **[04_INTERACTION_PACKAGES.md](./docs/backend/04_INTERACTION_PACKAGES.md)** - 북마크/좋아요/댓글 기능
+- **[05_AI_PACKAGE.md](./docs/backend/05_AI_PACKAGE.md)** - AI 검색 및 요약 시스템
+- **[06_EXTERNAL_INTEGRATION_PACKAGES.md](./docs/backend/06_EXTERNAL_INTEGRATION_PACKAGES.md)** - 네이버 API, Flask 연동, 스케줄러
+- **[07_COMMON_CONFIG_PACKAGES.md](./docs/backend/07_COMMON_CONFIG_PACKAGES.md)** - 공통 설정 및 예외 처리
 
-### 1) Docker Compose로 원커맨드 실행
-
-```bash
-# 레포 루트에서
-cp env.example .env
-# .env 파일 내용 채우기 (예:)
-# DB_PASSWORD=변경필수
 # DB_NAME=seosan_issue_db
 # DB_USER=root
 # DB_HOST=db
